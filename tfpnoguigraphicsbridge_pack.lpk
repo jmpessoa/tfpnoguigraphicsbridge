@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="tfpnoguigraphicsbridge_pack"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+      </SearchPaths>
+    </CompilerOptions>
+    <Files Count="8">
+      <Item1>
+        <Filename Value="fpnoguigraphicsbridge.pas"/>
+        <UnitName Value="FPNoGUIGraphicsBridge"/>
+      </Item1>
+      <Item2>
+        <Filename Value="fpnoguigraphicsbridge_icon.lrs"/>
+        <Type Value="LRS"/>
+      </Item2>
+      <Item3>
+        <Filename Value="regnoguigraphicsbridge.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="regnoguigraphicsbridge"/>
+      </Item3>
+      <Item4>
+        <Filename Value="griddata.pas"/>
+        <UnitName Value="GridData"/>
+      </Item4>
+      <Item5>
+        <Filename Value="griddata_icon.lrs"/>
+        <Type Value="LRS"/>
+      </Item5>
+      <Item6>
+        <Filename Value="viewport.pas"/>
+        <UnitName Value="ViewPort"/>
+      </Item6>
+      <Item7>
+        <Filename Value="viewport_icon.lrs"/>
+        <Type Value="LRS"/>
+      </Item7>
+      <Item8>
+        <Filename Value="fpcolorbridge.pas"/>
+        <UnitName Value="FPColorBridge"/>
+      </Item8>
+    </Files>
+    <Type Value="RunAndDesignTime"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="tfpdxfwritebridge_pack"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

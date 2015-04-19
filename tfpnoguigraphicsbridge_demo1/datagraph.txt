@@ -1,0 +1,5 @@
+id#circle;layer#green_layer;title#;x#0.50 1.50;y#1.00 0.00
+id#line;layer#green_layer;title#;x#0.30 1.00;y#3.60 2.00
+id#polygon;layer#green_layer;title#;x#0.50 1.00 1.50 1.00;y#1.50 1.00 1.50 2.00
+id#text;layer#green_layer;title#This is Pascal!;x#1.00;y#1.00
+id#point;layer#green_layer;title#;x#-0.30;y#2.00
