@@ -83,6 +83,7 @@ type
      function ViewPortToSurfaceX(wpx: integer):integer;
      function ViewPortToSurfaceY(wpy: integer):integer;
      FUNCTION CompOutCode(X, Y : INTEGER) : BYTE;  {Nested function}
+
    protected
      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
    public
@@ -109,12 +110,12 @@ type
 
      function IsInside(P: TPoint): boolean;
      function LineClipSurface(var XVP: integer; var YVP:integer; var X2: integer; var Y2:integer): boolean;
+     procedure SetSize(W: integer; H: integer);
 
      property XLeftGrid: integer read FXLeftGrid;
      property YTopGrid: integer read FYTopGrid;
      property WidthGrid: integer read FWidthGrid;
      property HeightGrid: integer read  FHeightGrid;
-
    published
      property PenThickness: integer read FPenThickness write SetPenThickness;
      property PenColor: TTFPColorBridge read FPenColor write SetPenColor;
@@ -175,6 +176,15 @@ end;
 procedure TViewPort.SetHeight(AValue: integer);
 begin
   FHeight:= AValue;
+  FHeightGrid:= FHeight -  FTopMargin - FBottomMargin;
+end;
+
+procedure TViewPort.SetSize(W: integer; H: integer);
+begin
+  FWidth:= W;
+  FWidthGrid:= FWidth - FLeftMargin - FRightMargin;
+
+  FHeight:= H;
   FHeightGrid:= FHeight -  FTopMargin - FBottomMargin;
 end;
 

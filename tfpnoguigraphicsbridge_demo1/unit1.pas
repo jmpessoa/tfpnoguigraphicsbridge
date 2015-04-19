@@ -83,11 +83,19 @@ begin
 end;
 
 procedure TForm1.FormActivate(Sender: TObject);
+var
+   W, H: integer;
 begin
+   W:= PaintBox1.Width;
+   H:= PaintBox1.Height;
 
-   ViewPort1.Height:= PaintBox1.Height;
-   ViewPort1.Width:= PaintBox1.Width;
+   FPNoGUIGraphicsBridge1.SetSurfaceSize(W, H);
+   FPNoGUIGraphicsBridge1.PathToFontFile:= 'C:\Windows\Fonts\Arial.ttf';
+   //hint [android]  FPNoGUIGraphicsBridge1.PathToFontFile:= '/system/fonts/Roboto-Regular.ttf';
+   //hint [linux]    FPNoGUIGraphicsBridge1.PathToFontFile:= '/usr/share/fonts/TTF/Arial.ttf';
+   FPNoGUIGraphicsBridge1.ActiveViewPort:= ViewPort1;
 
+   ViewPort1.SetSize(W, H);
    ViewPort1.DrawAxis:= True;
    ViewPort1.DrawGrid:= True;
    ViewPort1.SetScaleXY(-1.6 {xmin}, 1.6 {xmax}, -2.0 {ymin}, 6.0 {ymax});
@@ -95,18 +103,13 @@ begin
    FPNoGUIGraphicsBridge1.AddFunction(@GenericFunction1,-1.6,1.6);
    FPNoGUIGraphicsBridge1.AddFunction(@GenericFunction2,-1.6,1.6);
 
-   FPNoGUIGraphicsBridge1.SetSize(ViewPort1.Width, ViewPort1.Height);
-   FPNoGUIGraphicsBridge1.PathToFontFile:= 'C:\Windows\Fonts\Arial.ttf';
-   //hint [android]  FPNoGUIGraphicsBridge1.PathToFontFile:= '/system/fonts/Roboto-Regular.ttf';
-   //hint [linux]    FPNoGUIGraphicsBridge1.PathToFontFile:= '/usr/share/fonts/TTF/Arial.ttf';
+   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Circle',[Point(0,1.0){left/top},
+                                                           Point(1.0,0){right/botom}],'This is a Circle!','foo');
 
-   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Circle',[ToRealPoint(0,1){left/top},
-                                                           ToRealPoint(1,0){right/botom}],'This is a Circle!','foo');
-
-   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Line',[ToRealPoint(0.0,1.5),ToRealPoint(1.0, 3.6)],'','foo');
-   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Polyline',[ToRealPoint(0,1.5),ToRealPoint(0.5,1),
-                                                    ToRealPoint(1,1.5), ToRealPoint(0.5,2)],'','');
-   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Text',[ToRealPoint(0,0.5)],'Hello World!','');
+   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Line',[Point(0.0,1.5),Point(1.0, 3.6)],'','foo');
+   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Polyline',[Point(0,1.5),Point(0.5,1),
+                                                    Point(1,1.5), Point(0.5,2)],'','');
+   FPNoGUIGraphicsBridge1.AddEntity('blue_layer','Text',[Point(0,0.5)],'Hello World!','');
 
 
    (* "datagraph.txt" data format:
@@ -128,8 +131,8 @@ begin
    FPNoGUIGraphicsBridge1.DrawEntities('green_layer');   //from "datagraph.txt"
 
    ViewPort1.PenColor:= colbrRed;
-   FPNoGUIGraphicsBridge1.DrawFunction(False {not clear screnn}, 0 {index});
-   FPNoGUIGraphicsBridge1.DrawFunction(False {not clear screnn}, 1 {index});
+   FPNoGUIGraphicsBridge1.DrawFunction(False {not clear screen}, 0 {index});
+   FPNoGUIGraphicsBridge1.DrawFunction(False {not clear screen}, 1 {index});
 
    //Prepare DXF                      {1-red} {3-green} {5-blue}
    FPNoGUIGraphicsBridge1.DXFWriteBridge.AddLayer('blue_layer', 'CONTINUOUS', 5 );

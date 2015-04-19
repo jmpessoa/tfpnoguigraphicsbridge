@@ -348,7 +348,7 @@ TEntity = class
        property DXFWriteBridge: TFPDxfWriteBridge read FDXFWriteBridge write SetDXFWriteBridge;
        property EntityData: TEntityData read FEntityData write FEntityData;
        property OnDesignFunction: TDesignFX read FOnDesignFunction write FOnDesignFunction;
-       property ViewPort: TViewPort read FViewPort write SetViewPort;
+       property ActiveViewPort: TViewPort read FViewPort write SetViewPort;
  end;
 
 function ReplaceChar(query: string; oldchar, newchar: char):string;
@@ -3101,7 +3101,7 @@ begin
    saveColorPen:= Surface.Canvas.Pen.FPColor;
    Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
-   Surface.Canvas.Pen.Width:= ViewPort.PenThickness;
+   Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
 
    if CompareText('Line',entityName) = 0 then entType:= etLine
    else if CompareText('Text',entityName) = 0 then entType:= etText
@@ -3689,7 +3689,7 @@ begin
    EntityList:= TList.Create;
    FunctionList:= TList.Create;
    FEntityData:= TEntityData.Create;
-   FWidth:= 800;
+   FWidth:= 400;
    FHeight:= 400;
    Surface:= TFCLImageBridge.Create(FWidth,FHeight); //dammy
 end;

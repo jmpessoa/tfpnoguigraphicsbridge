@@ -21,6 +21,7 @@ object Form1: TForm1
     Top = 0
     Width = 611
     Align = alTop
+    BevelOuter = bvNone
     Caption = 'TFPNoGuiGraphicsBridge AppDemo1'
     TabOrder = 1
   end
@@ -30,6 +31,7 @@ object Form1: TForm1
     Top = 50
     Width = 56
     Align = alLeft
+    BevelOuter = bvNone
     Caption = 'Panel2'
     TabOrder = 2
   end
@@ -39,15 +41,16 @@ object Form1: TForm1
     Top = 50
     Width = 555
     Align = alClient
+    BevelOuter = bvNone
     Caption = 'Panel3'
     ClientHeight = 352
     ClientWidth = 555
     TabOrder = 3
     object PaintBox1: TPaintBox
-      Left = 1
-      Height = 350
-      Top = 1
-      Width = 553
+      Left = 0
+      Height = 352
+      Top = 0
+      Width = 555
       Align = alClient
       OnPaint = PaintBox1Paint
     end
@@ -72,7 +75,7 @@ object Form1: TForm1
     EntityData.TagLabel = 'Label1'
     EntityData.FieldSeparator = ';'
     EntityData.NameValueSeparator = '#'
-    ViewPort = ViewPort1
+    ActiveViewPort = ViewPort1
     left = 160
     top = 137
   end
@@ -109,7 +112,7 @@ object Form1: TForm1
     XInterval = 10
     YInterval = 10
     XLegendInterval = 2
-    YLegendInterval = 0
+    YLegendInterval = 2
     XShowLengend = True
     YShowLengend = True
     left = 384
