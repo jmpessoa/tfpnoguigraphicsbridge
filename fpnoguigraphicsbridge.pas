@@ -268,6 +268,8 @@ TEntity = class
        procedure SetWidth(AValue: integer);
        procedure SetHeight(AValue: integer);
        procedure SetPathToFontFile(pathToFile: string);
+       procedure SetSize(W,H: integer);
+       procedure SetSize(backgroundPNGFile: string);
     public
        Surface: TFCLImageBridge;
        EntityList: TList;
@@ -276,8 +278,9 @@ TEntity = class
        constructor Create(AOwner: TComponent); override;
        destructor Destroy; override;
 
-       procedure SetSize(W,H: integer);
-       procedure SetSize(backgroundPNGFile: string);
+       procedure SetSurfaceSize(W,H: integer);
+       procedure SetSurfaceSize(backgroundPNGFile: string);
+
        procedure PaintGrid(VP: TViewPort; clrscr: boolean);
        procedure PaintGrid(clrscr: boolean);
 
@@ -3610,7 +3613,17 @@ begin
    Surface.SetSize(W,H);
 end;
 
+procedure TFPNoGUIGraphicsBridge.SetSurfaceSize(W,H: integer);
+begin
+   Surface.SetSize(W,H);
+end;
+
 procedure TFPNoGUIGraphicsBridge.SetSize(backgroundPNGFile: string);
+begin
+   Surface.SetSize(backgroundPNGFile);
+end;
+
+procedure TFPNoGUIGraphicsBridge.SetSurfaceSize(backgroundPNGFile: string);
 begin
    Surface.SetSize(backgroundPNGFile);
 end;
