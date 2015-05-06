@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FPColorBridge;
 
 type
-  TGridData = class(TComponent)
+  TGridData = class(TPersistent)
   private
     FTitleX: string;
     FTitleY: string;
@@ -28,7 +28,7 @@ type
    XLengendOffsetValue: real;
    YLengendOffsetValue: real;
 
-   constructor Create(AOwner: TComponent); override;
+   constructor Create;
    destructor Destroy; override;
 
   published
@@ -48,22 +48,19 @@ type
 
   end;
 
-//procedure Register;
-
 implementation
 
-constructor TGridData.Create(AOwner: TComponent);
+constructor TGridData.Create;
 begin
-   inherited Create(AOwner);
    FAxisColor:= colbrLime;
    FColor:= colbrLightSteelBlue;
    FBackGroundColor:= colbrGreenYellow;
-   FTitleX:= 'X';
-   FTitleY:= 'Y';
+   FTitleX:= '';
+   FTitleY:= '';
    FXInterval:= 10;
    FYInterval:= 10;
    FXLegendInterval:= 1;
-   FYLegendInterval:= 1;
+   FYLegendInterval:= 2;
    XLengendOffsetValue:= 0;
    YLengendOffsetValue:= 0;
    FXShowLengend:= False;

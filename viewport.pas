@@ -14,11 +14,11 @@ const
 
 type
 
+  TChangeFontEvent = procedure(Sender: TObject; AValue: integer) of Object;
+
   TViewPort = class(TComponent)
   private
-
      FTitle: string;
-
      FXLeft: integer;
      FYTop: integer;
      FWidth: integer;
@@ -43,26 +43,24 @@ type
      FPenColor: TTFPColorBridge;
 
      FFontHeight: Integer;
-     FFontAntiAliased: boolean;
+
      FFontColor: TTFPColorBridge;
      FBackGroundColor: TTFPColorBridge;
 
-     FOnChangePenThickness: TNotifyEvent;
+     FOnChangePenThickness: TChangeFontEvent;
      FOnChangePenColor: TNotifyEvent;
-     FOnChangePenColorEx: TNotifyEvent;
+
      FOnChangeFontColor: TNotifyEvent;
-     FOnChangeFontAntiAliased: TNotifyEvent;
-     FOnChangeFontHeight: TNotifyEvent;
+     FOnChangeFontHeight: TChangeFontEvent;
      FOnChangeBackGroundColor: TNotifyEvent;
 
      procedure SetPenThickness(AValue: integer);
      procedure SetPenColor(AValue: TTFPColorBridge);
 
      procedure SetFontHeight(AValue: Integer);
-     procedure SetFontAntiAliased(AValue: boolean);
+
      procedure SetFontColor(AValue: TTFPColorBridge);
      procedure SetBackGroundColor(AValue: TTFPColorBridge);
-     procedure SetGridData(AValue: TGridData);
 
      procedure SetXLeft(AValue: integer);
      procedure SetYTop(AValue: integer);
@@ -82,10 +80,10 @@ type
      function WorldToViewPortY(wrldy:real):integer;
      function ViewPortToSurfaceX(wpx: integer):integer;
      function ViewPortToSurfaceY(wpy: integer):integer;
-     FUNCTION CompOutCode(X, Y : INTEGER) : BYTE;  {Nested function}
+     FUNCTION CompOutCode(X, Y : INTEGER) : BYTE;  {old Nested function}
 
    protected
-     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+     //
    public
 
      ScaleX: real;
@@ -120,7 +118,7 @@ type
      property PenThickness: integer read FPenThickness write SetPenThickness;
      property PenColor: TTFPColorBridge read FPenColor write SetPenColor;
      property FontSize: Integer read FFontHeight  write SetFontHeight;
-     property FontAntiAliased: boolean read FFontAntiAliased write SetFontAntiAliased;
+
      property FontColor: TTFPColorBridge read FFontColor write SetFontColor;
      property BackgroundColor: TTFPColorBridge read FBackGroundColor write SetBackGroundColor;
      property DrawGrid: boolean read FDrawGrid write FDrawGrid;
@@ -137,13 +135,12 @@ type
      property MarginBottom: integer read FBottomMargin write SetBottomMargin;
      property Cliping: boolean read FCliping write FCliping;
 
-     property GridData: TGridData read FGridData write SetGridData;
+     property GridData: TGridData read FGridData write FGridData;
 
-     property OnChangePenThickness: TNotifyEvent read FOnChangePenThickness write FOnChangePenThickness;
+     property OnChangePenThickness: TChangeFontEvent read FOnChangePenThickness write FOnChangePenThickness;
      property OnChangePenColor: TNotifyEvent read FOnChangePenColor write FOnChangePenColor;
 
-     property OnChangeFontSize: TNotifyEvent read FOnChangeFontHeight write FOnChangeFontHeight;
-     property OnChangeFontAntiAliased: TNotifyEvent read FOnChangeFontAntiAliased write  FOnChangeFontAntiAliased;
+     property OnChangeFontSize: TChangeFontEvent read FOnChangeFontHeight write FOnChangeFontHeight;
      property OnChangeFontColor: TNotifyEvent read FOnChangeFontColor write FOnChangeFontColor;
      property OnChangeBackGroundColor: TNotifyEvent read FOnChangeBackGroundColor write FOnChangeBackGroundColor;
 end;
@@ -212,36 +209,11 @@ begin
   FHeightGrid:= FHeight -  FTopMargin - FBottomMargin;
 end;
 
-procedure TViewPort.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FGridData) then
-  begin
-    FGridData := nil;
-  end;
-end;
-
-procedure TViewPort.SetGridData(AValue: TGridData);
-begin
-  if AValue <> FGridData then
-   begin
-      if Assigned(FGridData) then
-      begin
-         FGridData.RemoveFreeNotification(Self); //remove free notification...
-      end;
-      FGridData:= AValue;
-      if AValue <> nil then  //re- add free notification...
-      begin
-         AValue.FreeNotification(self);
-      end;
-   end;
-end;
-
 procedure TViewPort.SetPenThickness(AValue: integer);
 begin
   if FPenThickness = AValue then Exit;
   FPenThickness:= AValue;
-  if Assigned(FOnChangePenThickness) then FOnChangePenThickness(Self);
+  if Assigned(FOnChangePenThickness) then FOnChangePenThickness(Self, AValue);
 end;
 
 procedure TViewPort.SetPenColor(AValue: TTFPColorBridge);
@@ -255,14 +227,7 @@ procedure TViewPort.SetFontHeight(AValue: integer);
 begin
   if FFontHeight = AValue then Exit;
   FFontHeight:= AValue;
-  if Assigned(FOnChangeFontHeight) then FOnChangeFontHeight(Self);
-end;
-
-procedure TViewPort.SetFontAntiAliased(AValue: boolean);
-begin
-  if FFontAntiAliased = AValue then Exit;
-  FFontAntiAliased:= AValue;
-  if Assigned(FOnChangeFontAntiAliased) then FOnChangeFontAntiAliased(Self);
+  if Assigned(FOnChangeFontHeight) then FOnChangeFontHeight(Self, AValue);
 end;
 
 procedure TViewPort.SetFontColor(AValue: TTFPColorBridge);
@@ -288,6 +253,7 @@ end;
 function TViewPort.IsInside(P: TPoint): boolean;
 begin
    Result:=  True; //TODO {true/false}
+
    //PtInRect(Rect(FXLeftGrid-VP,FYTopGrid-VP,FXLeftGrid+FWidthGrid+VP, FYTopGrid+FHeightGrid+VP), P);
 end;
 
@@ -486,7 +452,7 @@ constructor TViewPort.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  FTitle:= 'ViewPort';
+  FTitle:= '';
   FXLeft:= 0;
   FYTop:= 0;
   FWidth:= 800;
@@ -499,21 +465,23 @@ begin
   FYTopGrid:= FYTop + FTopMargin;
   FWidthGrid:= FWidth - FLeftMargin - FRightMargin;
   FHeightGrid:= FHeight -  FTopMargin - FBottomMargin;
-  Cliping:= False;
+  Cliping:= False;    //TODO
   FPenThickness:= 1;
   FPenColor:= colbrRed;
-  FFontHeight:= 9;
-  FFontAntiAliased:= True;
+  FFontHeight:= 10;
   FFontColor:= colbrBlack ;
   FBackGroundColor:= colbrLavender;
-  FDrawGrid:= False;
-  FDrawAxis:= False;
+  FDrawGrid:= True;
+  FDrawAxis:= True;
+
+  FGridData:= TGridData.Create;
 
 end;
 
 destructor TViewPort.Destroy;
 begin
   //
+   FGridData.Free;
    inherited Destroy;
 end;
 

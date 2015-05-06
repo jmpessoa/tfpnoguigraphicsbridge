@@ -51,9 +51,9 @@ TLineToggleSide = (tsSide1, tsSide2);
 
 TRealPoints = array[0..MAXPOINTS] of TRealPoint;
 TFX = function(X: real): real;
-TDesignFX = procedure(x: real; out y:real) of object;
+TDesignFX = procedure(x: real; out y:real; out skip: boolean) of object;
 
-TFCLImageBridge = class(TObject)
+ TFCLImageBridge = class(TObject)
   private
     FImgMem: TFPCustomImage;
     FPngImgReader: TFPCustomImageReader;
@@ -83,6 +83,7 @@ TFCLImageBridge = class(TObject)
     procedure SetFont(pathToFile: string);
 
     property  FreeTypeFont: TFreeTypeFont read FFreeTypeFont write FFreeTypeFont;
+
 end;
 
 TFunction = class
@@ -261,10 +262,11 @@ TEntity = class
        FViewPort: TViewPort;
        FOnDesignFunction: TDesignFX;
        FDXFWriteBridge: TFPDxfWriteBridge;
+       FClrscr: boolean;
 
        procedure SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
        procedure SetViewPort(AValue: TViewPort);
-       procedure DoDesignFunction(x: real; out y:real);
+       procedure DoDesignFunction(x: real; out y:real; out skip: boolean);
        procedure SetWidth(AValue: integer);
        procedure SetHeight(AValue: integer);
        procedure SetPathToFontFile(pathToFile: string);
@@ -281,8 +283,8 @@ TEntity = class
        procedure SetSurfaceSize(W,H: integer);
        procedure SetSurfaceSize(backgroundPNGFile: string);
 
-       procedure PaintGrid(VP: TViewPort; clrscr: boolean);
-       procedure PaintGrid(clrscr: boolean);
+       procedure PaintGrid(VP: TViewPort; clearscr: boolean);
+       procedure PaintGrid(clearscr: boolean);
 
        procedure PaintViewPort(VP: TViewPort);
        procedure PaintViewPort;
@@ -335,9 +337,10 @@ TEntity = class
        procedure SetFontColor(colorBridge: TTFPColorBridge);
        procedure SetFontHeight(fontHeight: integer);
        procedure SetFontAntiAliased(antiAliased: boolean);
+       procedure SetFontResolution(dpiResolution: integer);
 
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
-
+       property Clearscreen: boolean read FClrscr write FClrscr;
     protected
        procedure Loaded; override;
        procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -1238,6 +1241,10 @@ end;
  Canvas.Arc(Rec.Left, Rec.Top, Rec.Right, Rec.Bottom, P1X, P1Y, P2X, P2Y);
 }
 
+{   l = 1 , q= ...
+FPNoGUIGraphicsBridge3.AddEntity(layer,'Arc',[Point(l, 0.0)= centro, Point(l/2, 0.0) = r ,Point(l, q) = final],
+                                                FloatToStrF(q, ffFixed, 0,1),'');
+}
 procedure TEntity.DrawArc(Canvas: TFPCustomCanvas; px1, py1, px2, py2, px3, py3: integer;  sTitle: string);
 var
    ar:  real;
@@ -2409,10 +2416,11 @@ begin
   Canvas.Pen.FPColor:= colRed;
 
   FFreeTypeFont:=TFreeTypeFont.Create; //On Windows install: zlib1.dll, freetype6.dll -->Rename to: freetype-6.dll
-  FFreeTypeFont.Resolution:= 112; {97 = defaultResolution}
-  FFreeTypeFont.AntiAliased:= False; //True;
+  FFreeTypeFont.Resolution:= 72; { or default resolution [97]  ??}
+  //FFreeTypeFont.AntiAliased:= True;
+
   FFreeTypeFont.FontIndex:= 0;
-  FFreeTypeFont.Size:= 9;
+  FFreeTypeFont.Size:= 8;
   FFreeTypeFont.FPColor:= colBlack;
 end;
 
@@ -2613,6 +2621,7 @@ begin
    end;
 end;
 
+
 procedure TFPNoGUIGraphicsBridge.SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
 begin
   if AValue <> FDXFWriteBridge then
@@ -2629,10 +2638,11 @@ begin
    end;
 end;
 
-procedure TFPNoGUIGraphicsBridge.DoDesignFunction(x: real; out y:real);
+procedure TFPNoGUIGraphicsBridge.DoDesignFunction(x: real; out y:real; out skip: boolean);
 begin
    y:=0;
-   if Assigned(FOnDesignFunction) then FOnDesignFunction(x,y);
+   skip:= False;
+   if Assigned(FOnDesignFunction) then FOnDesignFunction(x,y,skip);
 end;
 
 function TFPNoGUIGraphicsBridge.AddEntity(AEntity: TEntity): integer;
@@ -2836,7 +2846,7 @@ begin
    else if CompareText('LinearAlignedDim',entityName) = 0 then entType:= etLinearAlignedDim
    else if CompareText('LinearVerticalDim',entityName) = 0 then entType:= etLinearVerticalDim
    else if CompareText('LinearHorizontalDim',entityName) = 0 then entType:= etLinearHorizontalDim
-   else if CompareText('etRadialDim',entityName) = 0 then entType:= etLinearAlignedDim
+   else if CompareText('RadialDim',entityName) = 0 then entType:= etLinearAlignedDim
    else if CompareText('DiameterDim',entityName) = 0 then entType:= etDiameterDim
    else if CompareText('ArcDim',entityName) = 0 then entType:= etArcDim
    else if CompareText('AngleDim',entityName) = 0 then entType:= etAngleDim
@@ -2933,8 +2943,8 @@ var
    saveColor: TFPColor;
 begin
     saveColor:= Surface.Canvas.Brush.FPColor;
-    Surface.Canvas.Brush.FPColor := ToTFPColor(FViewPort.BackGroundColor);
     Surface.Canvas.Brush.Style := bsSolid;
+    Surface.Canvas.Brush.FPColor := ToTFPColor(FViewPort.BackGroundColor);
     Surface.Canvas.FillRect(0, 0, Surface.Width, Surface.Height);
     Surface.Canvas.Brush.Style := bsClear;
     Surface.Canvas.Brush.FPColor:= saveColor;
@@ -2945,8 +2955,8 @@ var
    saveColor: TFPColor;
 begin
    saveColor:= Surface.Canvas.Brush.FPColor;
-   Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.BackGroundColor);
    Surface.Canvas.Brush.Style:= bsSolid;
+   Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.BackGroundColor);
    Surface.Canvas.FillRect(VP.XLeft,VP.YTop, VP.XLeft+ VP.Width, VP.YTop+ VP.Height);
    Surface.Canvas.Brush.Style:= bsClear;
    Surface.Canvas.Brush.FPColor:= saveColor;
@@ -3076,18 +3086,25 @@ var
    objEntity : TEntity;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
+
    objEntity:= TEntity.Create('', Entity, V, sTitle, sTag);
    objEntity.Draw(FViewPort, Surface.Canvas);
    objEntity.FEntityData.Layer:= FEntityData.Layer;
    AddEntity(objEntity);
    Result:= EntityList.Count -1;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
 
 
@@ -3097,10 +3114,14 @@ var
    entType: TEntityState;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
 
    if CompareText('Line',entityName) = 0 then entType:= etLine
@@ -3134,8 +3155,10 @@ begin
    objEntity.Draw(FViewPort, Surface.Canvas);
    AddEntity(objEntity);
    Result:= EntityList.Count - 1;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
 
 function TFPNoGUIGraphicsBridge.DrawEntity(VP: TViewPort; SelectedIndex: integer): TEntity;
@@ -3144,11 +3167,17 @@ var
    objEntity : TEntity;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
-   saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveThickness:= Surface.Canvas.Pen.Width;
+   saveColorPen:= Surface.Canvas.Pen.FPColor;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
+
    if VP = nil then VP:= FViewPort;
    count:=EntityList.Count;
    if SelectedIndex < 0 then //Draw All
@@ -3167,6 +3196,7 @@ begin
    Result:= objEntity;
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
 
 
@@ -3176,19 +3206,26 @@ var
    objEntity : TEntity;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(bridgeColor);
    saveThickness:= Surface.Canvas.Pen.Width;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(bridgeColor);
    Surface.Canvas.Pen.Width:= thickness;
+
    count:=EntityList.Count;
    if index < count then
    begin
        objEntity := GetEntity(index);
        objEntity.Draw(FViewPort, Surface.Canvas);
    end;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
 
 procedure TFPNoGUIGraphicsBridge.DrawEntities;
@@ -3197,11 +3234,16 @@ var
    objEntity : TEntity;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
+
    count:=EntityList.Count;
    for i:=0 to count - 1 do
    begin
@@ -3210,6 +3252,7 @@ begin
    end;
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
 
 procedure TFPNoGUIGraphicsBridge.DrawEntities(layerName: string);
@@ -3218,11 +3261,16 @@ var
    objEntity : TEntity;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   saveFontSize: integer;
 begin
+   saveFontSize:= Surface.FreeTypeFont.Size;
    saveColorPen:= Surface.Canvas.Pen.FPColor;
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
+
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
+
    count:=EntityList.Count;
    for i:=0 to count - 1 do
    begin
@@ -3230,9 +3278,12 @@ begin
       if CompareText(layerName, objEntity.FEntityData.Layer) = 0 then
          objEntity.Draw(FViewPort, Surface.Canvas);
    end;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
 end;
+
 
 function TFPNoGUIGraphicsBridge.DrawEntity(SelectedIndex: integer): TEntity;
 begin
@@ -3314,6 +3365,7 @@ begin
              objFunction := GetFunction(SelectedIndex);
              objFunction.Draw(VP, Surface.Canvas);
         end;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
 end;
@@ -3333,7 +3385,12 @@ var
    inside: boolean;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   skip: boolean;
 begin
+
+   dx:= (xmax - xmin)/MAXPOINTS;
+   if dx = 0 then exit;
+
    saveColorPen:= Surface.Canvas.Pen.FPColor;
    Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
    saveThickness:= Surface.Canvas.Pen.Width;
@@ -3341,26 +3398,32 @@ begin
 
    if reset then Surface.Canvas.Clear;
 
-   dx:= (xmax - xmin)/MAXPOINTS;
    wX:= xmin;
-   DoDesignFunction(wX, wY);
+   DoDesignFunction(wX, wY, skip);
    FViewPort.WorldToSurfaceXY(wX, wY, X,Y);
    Surface.Canvas.MoveTo(X,Y);
    wX:= wX + dx;
    while wX <= xmax do
    begin
-     DoDesignFunction(wX, wY);
+     DoDesignFunction(wX, wY, skip);
      inside:= FViewPort.WorldToSurfaceXY(wX,wY,X,Y);
      if not FViewPort.Cliping then
      begin
-        Surface.Canvas.LineTo(X,Y)
+        if (not skip) then
+           Surface.Canvas.LineTo(X,Y)
+        else
+           Surface.Canvas.MoveTo(X,Y)
      end
      else //clip
      begin
-        if not inside then Surface.Canvas.MoveTo(X,Y) else Surface.Canvas.LineTo(X,Y);
+        if (not inside) or (skip) then
+           Surface.Canvas.MoveTo(X,Y)
+        else
+           Surface.Canvas.LineTo(X,Y);
      end;
      wX:= wX + dx;
    end;
+
    Surface.Canvas.Pen.FPColor:= saveColorPen;
    Surface.Canvas.Pen.Width:= saveThickness;
 end;
@@ -3375,7 +3438,14 @@ var
    inside: boolean;
    saveColorPen:  TFPColor;
    saveThickness: integer;
+   skip: boolean;
 begin
+     xmax:= FViewPort.MaxX;
+     xmin:= FViewPort.MinX;
+
+     dx:= (xmax - xmin)/MAXPOINTS;
+     if dx = 0 then exit;
+
      saveColorPen:= Surface.Canvas.Pen.FPColor;
      Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
 
@@ -3384,25 +3454,28 @@ begin
 
      if reset then Surface.Canvas.Clear;
 
-     xmax:= FViewPort.MaxX;
-     xmin:= FViewPort.MinX;
-     dx:= (xmax - xmin)/MAXPOINTS;
      wX:= xmin;
-     DoDesignFunction(wX, wY);
+     DoDesignFunction(wX, wY, skip);
      FViewPort.WorldToSurfaceXY(wX, wY, X,Y);
      Surface.Canvas.MoveTo(X,Y);
      wX:= wX + dx;
      while wX <= xmax do
      begin
-       DoDesignFunction(wX, wY);
+       DoDesignFunction(wX, wY, skip);
        inside:= FViewPort.WorldToSurfaceXY(wX,wY,X,Y);
        if not FViewPort.Cliping then
        begin
-          Surface.Canvas.LineTo(X,Y)
+          if (not skip) then
+             Surface.Canvas.LineTo(X,Y)
+          else
+             Surface.Canvas.MoveTo(X,Y);
        end
        else //clip
        begin
-          if not inside then Surface.Canvas.MoveTo(X,Y) else Surface.Canvas.LineTo(X,Y);
+          if (not inside) or (skip) then
+             Surface.Canvas.MoveTo(X,Y)
+          else
+             Surface.Canvas.LineTo(X,Y);
        end;
        wX:= wX + dx;
      end;
@@ -3410,15 +3483,16 @@ begin
      Surface.Canvas.Pen.Width:= saveThickness;
 end;
 
-procedure TFPNoGUIGraphicsBridge.PaintGrid(VP: TViewPort; clrscr: boolean);
+procedure TFPNoGUIGraphicsBridge.PaintGrid(VP: TViewPort; clearscr: boolean);
 var
    dk, dn, dn1: real;
-   tw, th, tws, X,Y, saveFontHeight: integer;
+   tw, th, tws, X,Y: integer;
    savePenColor, saveFontColor, saveBrushColor: TFPColor;
    insideX, insideY: boolean;
    titX, titY: string;
    saveBrushStyle: TFPBrushStyle;
-   saveFontAntiAliased: boolean;
+   saveThickness: integer;
+   saveFontSize: integer;
 begin
 
    if VP = nil then VP:= FViewPort;
@@ -3426,18 +3500,22 @@ begin
    titX:= FViewPort.GridData.XTitle;
    titY:= FViewPort.GridData.YTitle;
 
+   saveFontSize:= Surface.FreeTypeFont.Size;
+   saveFontColor:= Surface.Canvas.Font.FPColor;
+   saveThickness:= Surface.Canvas.Pen.Width;
    savePenColor:= Surface.Canvas.Pen.FPColor;
+
    saveBrushStyle:= Surface.Canvas.Brush.Style;
    saveBrushColor:= Surface.Canvas.Brush.FPColor;
 
-   if clrscr then
+   if clearscr then
    begin
      Surface.Canvas.Brush.Style:= bsSolid;
      Surface.Canvas.Brush.FPColor:= ToTFPColor(FViewPort.GridData.BackGroundColor);
-     Surface.Canvas.Rectangle(VP.XLeftGrid,VP.YTopGrid, VP.XLeftGrid+ VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid);
+     Surface.Canvas.FillRect(VP.XLeftGrid,VP.YTopGrid, VP.XLeftGrid+ VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid);
    end;
-
    Surface.Canvas.Brush.FPColor:= saveBrushColor;
+
    //frame grid color
    Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.GridData.Color);
    Surface.Canvas.Brush.Style:= bsClear;
@@ -3445,18 +3523,10 @@ begin
 
    //grid color
    Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.GridData.Color);
+   Surface.Canvas.Font.FPColor:= ToTFPColor(FViewPort.FontColor);
+   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
 
    tw:= Trunc(Surface.Canvas.GetTextWidth(VP.Title)/2);
-
-   saveFontColor:= Surface.Canvas.Font.FPColor;
-   saveFontHeight:= Surface.Canvas.Font.Size;
-
-   saveFontAntiAliased:= Surface.FreeTypeFont.AntiAliased;
-
-   Surface.FreeTypeFont.AntiAliased:= FViewPort.FontAntiAliased;
-   Surface.Canvas.Font.FPColor:= ToTFPColor(FViewPort.FontColor);
-   Surface.Canvas.Font.Size:= FViewPort.FontSize;
-
    Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
    Surface.Canvas.TextOut(VP.XLeftGrid+VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid+4,titX);
    Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop+ Trunc(VP.MarginTop/2) ,VP.Title);
@@ -3572,26 +3642,32 @@ begin
             end;
        end;
    end;
+
+   Surface.Canvas.Brush.FPColor:= saveBrushColor;
    Surface.Canvas.Brush.Style:= saveBrushStyle;
+
    Surface.Canvas.Pen.FPColor:= savePenColor;
    Surface.Canvas.Font.FPColor:= saveFontColor;
-   Surface.Canvas.Font.Size:= saveFontHeight;
-   Surface.FreeTypeFont.AntiAliased:= saveFontAntiAliased;
+   Surface.Canvas.Pen.Width:=  saveThickness;
+   Surface.FreeTypeFont.Size:= saveFontSize;
+
 end;
 
-procedure TFPNoGUIGraphicsBridge.PaintGrid(clrscr: boolean);
+procedure TFPNoGUIGraphicsBridge.PaintGrid(clearscr: boolean);
 begin
-   PaintGrid(FViewPort,clrscr);
+   PaintGrid(FViewPort,clearscr);
 end;
 
 procedure TFPNoGUIGraphicsBridge.PaintViewPort(VP: TViewPort);
 var
    saveColor: TFPColor;
 begin
+
    saveColor:= Surface.Canvas.Brush.FPColor;
-   Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.BackGroundColor);
    Surface.Canvas.Brush.Style:= bsSolid;
+   Surface.Canvas.Brush.FPColor:= ToTFPColor(FViewPort.BackGroundColor);
    Surface.Canvas.FillRect(VP.XLeft,VP.YTop, VP.XLeft+ VP.Width, VP.YTop+ VP.Height);
+
    Surface.Canvas.Brush.Style:= bsClear;
    Surface.Canvas.Brush.FPColor:= saveColor;
 end;
@@ -3651,6 +3727,11 @@ end;
 procedure TFPNoGUIGraphicsBridge.SetFontAntiAliased(antiAliased: boolean);
 begin
    Surface.FreeTypeFont.AntiAliased:= antiAliased;
+end;
+
+procedure TFPNoGUIGraphicsBridge.SetFontResolution(dpiResolution: integer);
+begin
+   Surface.FreeTypeFont.Resolution:= dpiResolution;
 end;
 
 procedure TFPNoGUIGraphicsBridge.SetPenThickness(penThickness: integer);
