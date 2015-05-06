@@ -20,7 +20,7 @@
         <UnitName Value="Unit1"/>
         <IsVisibleTab Value="True"/>
         <TopLine Value="81"/>
-        <CursorPos X="25" Y="90"/>
+        <CursorPos X="10" Y="87"/>
         <UsageCount Value="111"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -44,7 +44,10 @@
       </Unit4>
       <Unit5>
         <Filename Value="unit1.lfm"/>
-        <UsageCount Value="6"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="92"/>
+        <CursorPos X="29" Y="102"/>
+        <UsageCount Value="10"/>
         <DefaultSyntaxHighlighter Value="LFM"/>
       </Unit5>
       <Unit6>
@@ -106,7 +109,6 @@
       </Unit15>
       <Unit16>
         <Filename Value="..\fpnoguigraphicsbridge.pas"/>
-        <UnitName Value="FPNoGUIGraphicsBridge"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="3606"/>
         <CursorPos X="17" Y="3619"/>

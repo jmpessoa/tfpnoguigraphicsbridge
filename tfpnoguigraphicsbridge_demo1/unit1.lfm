@@ -80,10 +80,10 @@ object Form1: TForm1
     top = 137
   end
   object ViewPort1: TViewPort
+    Tag = 1
     PenThickness = 1
     PenColor = colbrSteelBlue
     FontSize = 9
-    FontAntiAliased = True
     FontColor = colbrBlack
     BackgroundColor = colbrLavender
     DrawGrid = False
@@ -98,24 +98,16 @@ object Form1: TForm1
     MarginRight = 40
     MarginBottom = 25
     Cliping = True
-    GridData = GridData1
+    GridData.AxisColor = colbrLime
+    GridData.Color = colbrLightSteelBlue
+    GridData.BackgroundColor = colbrGreenYellow
+    GridData.XInterval = 10
+    GridData.YInterval = 10
+    GridData.XLegendInterval = 1
+    GridData.YLegendInterval = 2
+    GridData.XShowLengend = False
+    GridData.YShowLengend = False
     left = 280
-    top = 136
-  end
-  object GridData1: TGridData
-    Tag = 1
-    XTitle = 'X'
-    YTitle = 'Y'
-    AxisColor = colbrLime
-    Color = colbrLightSteelBlue
-    BackgroundColor = colbrGreenYellow
-    XInterval = 10
-    YInterval = 10
-    XLegendInterval = 2
-    YLegendInterval = 2
-    XShowLengend = True
-    YShowLengend = True
-    left = 384
     top = 136
   end
   object FPDxfWriteBridge1: TFPDxfWriteBridge
