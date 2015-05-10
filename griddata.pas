@@ -63,8 +63,8 @@ begin
    FYLegendInterval:= 2;
    XLengendOffsetValue:= 0;
    YLengendOffsetValue:= 0;
-   FXShowLengend:= False;
-   FYShowLengend:= False;
+   FXShowLengend:= True;
+   FYShowLengend:= True;
 end;
 
 destructor TGridData.Destroy;
