@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils,
   FPCanvas, FPImgCanv, FPWritePNG, FPReadPNG, FPImage, FTFont, freetype,
-  types, GeometryUtilsBridge, FPColorBridge,  FPDxfWriteBridge, ViewPort;
+  types, GeometryUtilsBridge, FPColorBridge, ViewPort;
 
 (*
 From: http://wiki.freepascal.org/Developing_with_Graphics
@@ -219,6 +219,7 @@ TEntity = class
     procedure DrawRectangle(VP: TViewPort; Canvas: TFPCustomCanvas);
 
     procedure DrawCircle(VP: TViewPort; Canvas: TFPCustomCanvas);
+    procedure DrawCircle(Canvas: TFPCustomCanvas; centerX, centerY, radius: integer;  sTitle: string);
 
     procedure DrawArc(Canvas: TFPCustomCanvas; px1, py1, px2, py2, px3, py3:integer;  sTitle: string);
     procedure DrawArc(VP: TViewPort; Canvas: TFPCustomCanvas);
@@ -261,10 +262,10 @@ TEntity = class
        FEntityData: TEntityData;
        FViewPort: TViewPort;
        FOnDesignFunction: TDesignFX;
-       FDXFWriteBridge: TFPDxfWriteBridge;
-       FClrscr: boolean;
+       //FDXFWriteBridge: TFPDxfWriteBridge;
+       //FClrscr: boolean;
 
-       procedure SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
+       //procedure SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
        procedure SetViewPort(AValue: TViewPort);
        procedure DoDesignFunction(x: real; out y:real; out skip: boolean);
        procedure SetWidth(AValue: integer);
@@ -306,7 +307,7 @@ TEntity = class
        procedure SaveEntitiesToFile(fileName: string);
 
        function AddEntity(layerName:string; Entity: TEntityState; V: array of TRealPoint; sTitle, sTag: string): integer;
-       function AddEntity(layerName , entityName: string; V: array of TRealPoint; sTitle, sTag: string): integer;
+       function AddEntity(layerName, entityName: string; V: array of TRealPoint; sTitle, sTag: string): integer;
        function AddEntity(stringData: string;  sTag: string): integer;
        function AddEntity(AEntity: TEntity): integer;
        function AddFunction(F: TFX; xmin, xmax: real): integer;
@@ -340,7 +341,7 @@ TEntity = class
        procedure SetFontResolution(dpiResolution: integer);
 
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
-       property Clearscreen: boolean read FClrscr write FClrscr;
+       //property Clearscreen: boolean read FClrscr write FClrscr;
     protected
        procedure Loaded; override;
        procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -348,7 +349,7 @@ TEntity = class
        property Width: integer read FWidth write SetWidth;
        property Height: integer read  FHeight write setHeight;
 
-       property DXFWriteBridge: TFPDxfWriteBridge read FDXFWriteBridge write SetDXFWriteBridge;
+      // property DXFWriteBridge: TFPDxfWriteBridge read FDXFWriteBridge write SetDXFWriteBridge;
        property EntityData: TEntityData read FEntityData write FEntityData;
        property OnDesignFunction: TDesignFX read FOnDesignFunction write FOnDesignFunction;
        property ActiveViewPort: TViewPort read FViewPort write SetViewPort;
@@ -728,10 +729,18 @@ begin
     y:= (FEntityData.Vertice[0].y + FEntityData.Vertice[1].y)/2;
 end;
 
+{
 procedure TEntity.MiddlePointCircle(out x: real; out y: real);
 begin
   x:= (FEntityData.Vertice[0].x + FEntityData.Vertice[1].x)/2;
   y:= (FEntityData.Vertice[0].y + FEntityData.Vertice[1].y)/2;
+end;
+}
+
+procedure TEntity.MiddlePointCircle(out x: real; out y: real);
+begin
+  x:= FEntityData.Vertice[0].x; //(FEntityData.Vertice[0].x + FEntityData.Vertice[1].x)/2;
+  y:= FEntityData.Vertice[0].y; //(FEntityData.Vertice[0].y + FEntityData.Vertice[1].y)/2;
 end;
 
 procedure TEntity.MiddlePointArc(out x: real; out y: real);
@@ -1010,10 +1019,12 @@ begin
         dxfList.Add('100');
         dxfList.Add('AcDbEntity');
         dxfList.Add('8');
+
         if FEntityData.Layer = '' then
            dxfList.Add('0') {default Layer}
         else
            dxfList.Add(FEntityData.Layer); {Layer}
+
         dxfList.Add('62');
         dxfList.Add('256');
         dxfList.Add('6');
@@ -1178,6 +1189,7 @@ begin
    end;
    if  EntityState = etLine then
    begin
+
      dataStr:= 'id'+nameValueSeparator+'line'+
                       fieldSeparator+'layer'+nameValueSeparator+FEntityData.Layer+
                       fieldSeparator+'title'+nameValueSeparator+FEntityData.Title+
@@ -1188,20 +1200,18 @@ begin
    end;
    if EntityState = etCircle then
    begin;
-
      dataStr:= 'id'+nameValueSeparator+'circle'+
-                      fieldSeparator+'layer'+nameValueSeparator+FEntityData.Layer+
-                      fieldSeparator+'title'+nameValueSeparator+FEntityData.Title+
-                      fieldSeparator+'x'+nameValueSeparator+ FloatToStrF(FEntityData.Vertice[0].x, ffFixed, 0,2)+' '+
-                             FloatToStrF(FEntityData.Vertice[1].x, ffFixed, 0,2)+
-                      fieldSeparator+'y'+nameValueSeparator+ FloatToStrF(FEntityData.Vertice[0].y, ffFixed, 0,2)+' '+
-                               FloatToStrF(FEntityData.Vertice[1].y, ffFixed, 0,2);
+                       fieldSeparator+'layer'+nameValueSeparator+FEntityData.Layer+
+                       fieldSeparator+'title'+nameValueSeparator+FEntityData.Title+
+                       fieldSeparator+'x'+nameValueSeparator+FloatToStrF(FEntityData.Vertice[0].x, ffFixed, 0,2)+
+                       fieldSeparator+'y'+nameValueSeparator+FloatToStrF(FEntityData.Vertice[0].y, ffFixed, 0,2)+
+                       fieldSeparator+'r'+nameValueSeparator+FloatToStrF(Abs(FEntityData.Vertice[1].x -FEntityData.Vertice[0].x), ffFixed, 0,2);
+
      (*
      dataStr:= 'id#circle;layer#'+FEntityData.Layer+';title#'+FEntityData.Title+
                         ';x#'+ FloatToStrF(FEntityData.Vertice[0].x, ffFixed, 0,2)+
                         ';y#'+ FloatToStrF(FEntityData.Vertice[0].y, ffFixed, 0,2)+
-                        ';r#'+ FloatToStrF(Abs(FEntityData.Vertice[1].x -
-                                                  FEntityData.Vertice[0].x), ffFixed, 0,2);
+                        ';r#'+ FloatToStrF(Abs(FEntityData.Vertice[1].x -FEntityData.Vertice[0].x), ffFixed, 0,2);
      *)
 
    end;
@@ -1224,6 +1234,34 @@ begin
    Result:= dataStr;
 end;
 
+
+procedure TEntity.DrawCircle(Canvas: TFPCustomCanvas; centerX, centerY, radius: integer;  sTitle: string);
+begin
+  if Canvas <> nil then
+  begin
+   // Canvas.Brush.Style := bsClear;
+    Canvas.EllipseC(centerX, centerY, Abs(radius), Abs(radius));
+    //Canvas.Brush.Style := bsSolid;
+  end;
+end;
+
+procedure TEntity.DrawCircle(VP: TViewPort; Canvas: TFPCustomCanvas);
+var
+ centerX, centerY, radius: integer;
+ pX2, pY2: integer;
+begin
+  VP.WorldToSurfaceXY(FEntityData.Vertice[0].x, FEntityData.Vertice[0].y, centerX, centerY);  //cx,cy,r
+  VP.WorldToSurfaceXY(FEntityData.Vertice[1].x, FEntityData.Vertice[1].y, pX2, pY2);
+  radius:=Abs(pX2-centerX);
+  if Canvas <> nil then
+  begin
+   // Canvas.Brush.Style := bsClear;
+    Canvas.EllipseC(centerX, centerY, Abs(radius), Abs(radius));
+    //Canvas.Brush.Style := bsSolid;
+  end;
+end;
+
+{
 procedure TEntity.DrawCircle(VP: TViewPort; Canvas: TFPCustomCanvas);
 var
  pX{Left}, pY{Top}: integer;
@@ -1231,8 +1269,14 @@ var
 begin
   VP.WorldToSurfaceXY(FEntityData.Vertice[0].x, FEntityData.Vertice[0].y, pX, pY);
   VP.WorldToSurfaceXY(FEntityData.Vertice[1].x, FEntityData.Vertice[1].y, pX2, pY2);
-  if Canvas <> nil then Canvas.Ellipse(pX, pY, pX2, pY2);
+  if Canvas <> nil then
+  begin
+     //Canvas.Ellipse(pX, pY, pX2, pY2);
+     Canvas.EllipseC(pX,pY, Abs(pX2-pX),Abs(pX2-pX));
+  end
+  //DrawCircle(Canvas, pX1,pY1, Abs(pX2-pX1), Title);
 end;
+}
 
 {
  Rec := Rect(px1 - Round(Radius), py1 - Round(Radius), px1 + Round(Radius), py1 + Round(Radius));
@@ -1327,7 +1371,8 @@ begin
    if Canvas <> nil then
    begin
      //Canvas.Brush.Style := bsClear;
-     Canvas.TextOut(x,y,FEntityData.Title);
+     if FEntityData.Title <> '' then
+        Canvas.TextOut(x,y,FEntityData.Title);
      //Canvas.Brush.Style := bsSolid;
    end;
 end;
@@ -1337,7 +1382,8 @@ begin
    if Canvas <> nil then
    begin
      //Canvas.Brush.Style := bsClear;
-     Canvas.TextOut(x,y,sTitle);
+     if  sTitle <> '' then
+        Canvas.TextOut(x,y,sTitle);
      //Canvas.Brush.Style := bsSolid;
    end;
 end;
@@ -2589,6 +2635,7 @@ begin
    Surface.CopyToCanvas(FViewPort.XLeft,FViewPort.YTop,Canvas);
 end;
 
+
 procedure TFPNoGUIGraphicsBridge.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited;
@@ -2597,11 +2644,11 @@ begin
       if AComponent = FViewPort then
       begin
         FViewPort:= nil;
-      end
-      else if AComponent = FDXFWriteBridge then
+      end;
+      {else if AComponent = FDXFWriteBridge then
       begin
         FDXFWriteBridge:= nil;
-      end;
+      end;}
   end;
 end;
 
@@ -2621,7 +2668,7 @@ begin
    end;
 end;
 
-
+{
 procedure TFPNoGUIGraphicsBridge.SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
 begin
   if AValue <> FDXFWriteBridge then
@@ -2637,7 +2684,7 @@ begin
       end;
    end;
 end;
-
+}
 procedure TFPNoGUIGraphicsBridge.DoDesignFunction(x: real; out y:real; out skip: boolean);
 begin
    y:=0;
@@ -2694,7 +2741,7 @@ id#point;layer#0;title#this is a point;x#0.80;y#1.00
 
 function TFPNoGUIGraphicsBridge.AddEntity(stringData: string; sTag: string): integer;
 var
-  strX0,strY0, strX,strY: string;
+  strX0,strY0, strX,strY, strR: string;
   V: array of TRealPoint;
   dataList, listX, listY: TStringList;
   title, layerName: string;
@@ -2704,25 +2751,32 @@ begin
   dataList.Delimiter:= Self.EntityData.FieldSeparator; //';';
   dataList.StrictDelimiter:= True;
   dataList.DelimitedText:= stringData;
-  if Pos('circle', dataList.Strings[0]) > 0 then //id#line;layer#0;title#this is a circle;x#0.10 -0.50;y#1.1 4.15
+
+  if Pos('circle', dataList.Strings[0]) > 0 then //id#circle;layer#0;title#this is a circle;x#0.00;y#1.1;r#0.55
   begin
-    layerName:= dataList.Strings[1];
-    SplitStr(layerName,Self.EntityData.NameValueSeparator); //'#'
-    title:= dataList.Strings[2];
-    SplitStr(title,Self.EntityData.NameValueSeparator); //'#'
+      layerName:= dataList.Strings[1];
+      SplitStr(layerName,Self.EntityData.NameValueSeparator);
 
-    strX:= dataList.Strings[3]; //x#0.00 -0.50
-    splitStr(strX,Self.EntityData.NameValueSeparator);//0.00 -0.50 '#'
-    strX0:= SplitStr(strX, ' ');
+      title:= dataList.Strings[2];
+      SplitStr(title,Self.EntityData.NameValueSeparator);
 
-    strY:= dataList.Strings[4]; //y#1.00 4.00
-    splitStr(strY,Self.EntityData.NameValueSeparator);//1.00 4.00
-    strY0:= SplitStr(strY, ' ');  //'#'
+      strX:= dataList.Strings[3];
+      splitStr(strX,Self.EntityData.NameValueSeparator);
 
-    Result:= AddEntity(layerName, etCircle,[ToRealPoint(StrToFloat(strX0){left},StrToFloat(strY0){top}),
-                                          ToRealPoint( StrToFloat(strX){right}, StrToFloat(strY){bottom})],title,sTag);
+      strY:= dataList.Strings[4];
+      splitStr(strY,Self.EntityData.NameValueSeparator);
+
+      strR:= dataList.Strings[5];
+      splitStr(strR,Self.EntityData.NameValueSeparator);
+
+      Result:= AddEntity(layerName, etCircle, [
+                                               ToRealPoint(StrToFloat(strX),StrToFloat(strY)),
+                                               ToRealPoint(StrToFloat(strX)+StrToFloat(strR),StrToFloat(strY))
+                                               ],
+                                               title,sTag);
 
   end;
+
 
   if Pos('line', dataList.Strings[0]) > 0 then //id#line;layer#0;title#this is a line;x#0.10 -0.50;y#1.1 4.15
   begin                                        //id#line;x#0.10 -0.50;y#1.1 4.15
@@ -3526,10 +3580,19 @@ begin
    Surface.Canvas.Font.FPColor:= ToTFPColor(FViewPort.FontColor);
    Surface.FreeTypeFont.Size:= FViewPort.FontSize;
 
-   tw:= Trunc(Surface.Canvas.GetTextWidth(VP.Title)/2);
-   Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
-   Surface.Canvas.TextOut(VP.XLeftGrid+VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid+4,titX);
-   Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop+ Trunc(VP.MarginTop/2) ,VP.Title);
+
+   if  titY <> '' then
+      Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
+
+   if  titX <> '' then
+      Surface.Canvas.TextOut(VP.XLeftGrid+VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid+4,titX);
+
+   tw:= 0;
+   if  VP.Title <> '' then
+   begin
+      tw:= Trunc(Surface.Canvas.GetTextWidth(VP.Title)/2);
+      Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop+ Trunc(VP.MarginTop/2) ,VP.Title);
+   end;
 
    if FViewPort.DrawGrid then
    begin

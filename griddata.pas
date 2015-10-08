@@ -59,8 +59,8 @@ begin
    FTitleY:= '';
    FXInterval:= 10;
    FYInterval:= 10;
-   FXLegendInterval:= 1;
-   FYLegendInterval:= 2;
+   FXLegendInterval:= 2;
+   FYLegendInterval:= 1;
    XLengendOffsetValue:= 0;
    YLengendOffsetValue:= 0;
    FXShowLengend:= True;

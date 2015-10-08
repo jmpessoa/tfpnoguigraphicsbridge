@@ -48,7 +48,7 @@
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="tfpdxfwritebridge_pack"/>
+        <PackageName Value="LCLBase"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>

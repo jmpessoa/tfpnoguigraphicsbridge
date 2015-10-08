@@ -58,7 +58,6 @@ object Form1: TForm1
   object FPNoGUIGraphicsBridge1: TFPNoGUIGraphicsBridge
     Width = 800
     Height = 400
-    DXFWriteBridge = FPDxfWriteBridge1
     EntityData.DimExtensionLineGAP = 4
     EntityData.DimArrowSize = 12
     EntityData.DimArrowWidth = 4
@@ -79,16 +78,19 @@ object Form1: TForm1
     left = 160
     top = 137
   end
+  object FPDxfWriteBridge1: TFPDxfWriteBridge
+    OnProduceEntity = FPDxfWriteBridge1ProduceEntity
+    left = 153
+    top = 216
+  end
   object ViewPort1: TViewPort
-    Tag = 1
     PenThickness = 1
-    PenColor = colbrSteelBlue
-    FontSize = 9
+    PenColor = colbrRed
+    FontSize = 10
     FontColor = colbrBlack
     BackgroundColor = colbrLavender
-    DrawGrid = False
-    DrawAxis = False
-    Title = 'fcl_image + freetype'
+    DrawGrid = True
+    DrawAxis = True
     XLeft = 0
     YTop = 0
     Width = 800
@@ -97,7 +99,7 @@ object Form1: TForm1
     MarginTop = 30
     MarginRight = 40
     MarginBottom = 25
-    Cliping = True
+    Cliping = False
     GridData.AxisColor = colbrLime
     GridData.Color = colbrLightSteelBlue
     GridData.BackgroundColor = colbrGreenYellow
@@ -105,14 +107,9 @@ object Form1: TForm1
     GridData.YInterval = 10
     GridData.XLegendInterval = 1
     GridData.YLegendInterval = 2
-    GridData.XShowLengend = False
-    GridData.YShowLengend = False
-    left = 280
-    top = 136
-  end
-  object FPDxfWriteBridge1: TFPDxfWriteBridge
-    OnProduceEntity = FPDxfWriteBridge1ProduceEntity
-    left = 153
-    top = 216
+    GridData.XShowLengend = True
+    GridData.YShowLengend = True
+    left = 285
+    top = 101
   end
 end
