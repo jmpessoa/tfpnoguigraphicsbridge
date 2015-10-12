@@ -1033,17 +1033,25 @@ begin
         dxfList.Add('0.00');
         dxfList.Add('100');
         dxfList.Add('AcDbCircle');
-        dxfList.Add('10');  //nedd fix here!
-        cirx:= (FEntityData.Vertice[1].x + FEntityData.Vertice[0].x)/2;
+
+        dxfList.Add('10');
+        //cirx:= (FEntityData.Vertice[1].x + FEntityData.Vertice[0].x)/2;
+        cirx:= FEntityData.Vertice[0].x; //fixed!
         dxfList.Add(ReplaceChar(FloatToStrF(cirx, ffFixed, 0,2),',','.'));
+
         dxfList.Add('20');
-        ciry:= (FEntityData.Vertice[1].y + FEntityData.Vertice[0].y)/2;
+        //ciry:= (FEntityData.Vertice[1].y + FEntityData.Vertice[0].y)/2;
+        ciry:=  FEntityData.Vertice[0].y;    //fixed!
         dxfList.Add(ReplaceChar(FloatToStrF(ciry, ffFixed, 0,2),',','.'));
+
         dxfList.Add('30');
         dxfList.Add('0.0');
-        dxfList.Add('40'); // //nedd fix here!
-        ra:= Abs(FEntityData.Vertice[1].x - FEntityData.Vertice[0].x)/2;
+
+        dxfList.Add('40');
+        //ra:= Abs(FEntityData.Vertice[1].x - FEntityData.Vertice[0].x)/2;
+        ra:= Abs(FEntityData.Vertice[1].x - FEntityData.Vertice[0].x);  //fixed!
         dxfList.Add(ReplaceChar(FloatToStrF(ra, ffFixed, 0,2),',','.'));
+
      end;
      if EntityState = etPolyline then
      begin
