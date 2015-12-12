@@ -340,6 +340,26 @@ TEntity = class
        procedure SetFontAntiAliased(antiAliased: boolean);
        procedure SetFontResolution(dpiResolution: integer);
 
+       procedure DrawPath(VP: TViewPort; Points: array of TRealPoint);
+       procedure DrawPath(Points: array of TRealPoint);
+
+       procedure DrawCircle(VP: TViewPort; Points: array of TRealPoint);
+       procedure DrawCircle(Points: array of TRealPoint);
+
+       procedure DrawFillCircle(VP: TViewPort; Points: array of TRealPoint);
+       procedure DrawFillCircle(Points: array of TRealPoint);
+
+       procedure DrawRectangle(VP: TViewPort; Points: array of TRealPoint);
+       procedure DrawRectangle(Points: array of TRealPoint);
+
+       procedure DrawFillRectangle(VP: TViewPort; Points: array of TRealPoint);
+       procedure DrawFillRectangle(Points: array of TRealPoint);
+       procedure TextOut(P:  TRealPoint; txt: string);
+       procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string);
+
+       procedure TextOut(P: TRealPoint; txt: string; fontSize: integer; textColor: TTFPColorBridge);
+       procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer; textColor: TTFPColorBridge);
+
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
        //property Clearscreen: boolean read FClrscr write FClrscr;
     protected
@@ -2472,10 +2492,10 @@ begin
   FFreeTypeFont:=TFreeTypeFont.Create; //On Windows install: zlib1.dll, freetype6.dll -->Rename to: freetype-6.dll
   FFreeTypeFont.Resolution:= 72; { or default resolution [97]  ??}
   //FFreeTypeFont.AntiAliased:= True;
-
   FFreeTypeFont.FontIndex:= 0;
   FFreeTypeFont.Size:= 8;
   FFreeTypeFont.FPColor:= colBlack;
+
 end;
 
 destructor TFCLImageBridge.Destroy;
@@ -2487,7 +2507,6 @@ begin
    FFreeTypeFont.Free;
    inherited Destroy;
 end;
-
 
 (*
 Canvas.Font := TFreeTypeFont.create;
@@ -2635,12 +2654,12 @@ end;
 
 procedure TFPNoGUIGraphicsBridge.SetPathToFontFile(pathToFile: string);
 begin
-   Surface.SetFont(pathToFile);
+  Surface.SetFont(pathToFile);
 end;
 
 procedure TFPNoGUIGraphicsBridge.CopyToCanvas(Canvas: TFPCustomCanvas);
 begin
-   Surface.CopyToCanvas(FViewPort.XLeft,FViewPort.YTop,Canvas);
+  Surface.CopyToCanvas(FViewPort.XLeft,FViewPort.YTop,Canvas);
 end;
 
 
@@ -3398,6 +3417,185 @@ begin
     VP.ScaleXY(VP.MinX, VP.MaxX, VP.MinY, VP.MaxY);
 end;
 
+procedure TFPNoGUIGraphicsBridge.DrawPath(VP: TViewPort; Points: array of TRealPoint);
+var
+  i,X,Y, countPoints: integer;
+  inside: boolean;
+  saveColor: TFPColor;
+begin
+   saveColor:= Surface.Canvas.Pen.FPColor;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.PenColor);
+   countPoints:= Length(Points);
+   VP.WorldToSurfaceXY(Points[0].x, Points[0].y,X,Y);
+   Surface.Canvas.MoveTo(X,Y);
+   for i:= 1 to countPoints-1 do
+   begin
+      inside:= VP.WorldToSurfaceXY(Points[i].x,Points[i].y ,X,Y);
+      if not VP.Cliping then
+      begin
+         Surface.Canvas.LineTo(X,Y)
+      end
+      else //clip
+      begin
+         if not inside then Surface.Canvas.MoveTo(X,Y) else  Surface.Canvas.LineTo(X,Y);
+      end;
+   end;
+   Surface.Canvas.Pen.FPColor:= saveColor;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawPath(Points: array of TRealPoint);
+begin
+  DrawPath(FViewPort, Points);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFillCircle(VP: TViewPort; Points: array of TRealPoint);
+var
+ centerX, centerY, radius: integer;
+ pX2, pY2: integer;
+ saveBrushColor, savePenColor: TFPColor;
+begin
+  VP.WorldToSurfaceXY(Points[0].x, Points[0].y, centerX, centerY);  //cx,cy,r
+  VP.WorldToSurfaceXY(Points[1].x, Points[1].y, pX2, pY2);
+  radius:=Abs(pX2-centerX);
+  if Surface.Canvas <> nil then
+  begin
+    saveBrushColor:= Surface.Canvas.Brush.FPColor;
+    savePenColor:= Surface.Canvas.Pen.FPColor;
+
+    Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.PenColor);
+    Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.PenColor);
+
+    Surface.Canvas.Brush.Style := bsSolid;
+    Surface.Canvas.EllipseC(centerX, centerY, Abs(radius), Abs(radius));
+    Surface.Canvas.Brush.Style := bsClear;
+
+    Surface.Canvas.Brush.FPColor:= saveBrushColor;
+    Surface.Canvas.Pen.FPColor:= savePenColor;
+  end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFillCircle(Points: array of TRealPoint);
+begin
+  DrawFillCircle(FViewPort, Points);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawCircle(VP: TViewPort; Points: array of TRealPoint);
+var
+ centerX, centerY, radius: integer;
+ pX2, pY2: integer;
+ saveColor: TFPColor;
+begin
+  saveColor:= Surface.Canvas.Pen.FPColor;
+  Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.PenColor);
+  VP.WorldToSurfaceXY(Points[0].x, Points[0].y, centerX, centerY);  //cx,cy,r
+  VP.WorldToSurfaceXY(Points[1].x, Points[1].y, pX2, pY2);
+  radius:=Abs(pX2-centerX);
+  if Surface.Canvas <> nil then
+  begin
+    Surface.Canvas.EllipseC(centerX, centerY, Abs(radius), Abs(radius));
+  end;
+  Surface.Canvas.Pen.FPColor:= saveColor;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawCircle(Points: array of TRealPoint);
+begin
+  DrawCircle(FViewPort, Points);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawRectangle(VP: TViewPort; Points: array of TRealPoint);
+var
+   px1, py1, px2, py2: integer;
+   saveColor: TFPColor;
+begin
+   saveColor:= Surface.Canvas.Pen.FPColor;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.PenColor);
+   VP.WorldToSurfaceXY(Points[0].x, Points[0].y, px1, py1);
+   VP.WorldToSurfaceXY(Points[1].x, Points[1].y, px2, py2);
+   if Surface.Canvas <> nil then
+   begin
+      Surface.Canvas.Rectangle(px1, py1, px2, py2);
+   end;
+   Surface.Canvas.Pen.FPColor:= saveColor;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawRectangle(Points: array of TRealPoint);
+begin
+  DrawRectangle(FViewPort, Points);
+end;
+
+
+procedure TFPNoGUIGraphicsBridge.DrawFillRectangle(VP: TViewPort; Points: array of TRealPoint);
+var
+   px1, py1, px2, py2: integer;
+   saveColor, saveBrushColor: TFPColor;
+begin
+   saveColor:= Surface.Canvas.Pen.FPColor;
+   saveBrushColor:= Surface.Canvas.Brush.FPColor;
+
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.PenColor);
+   Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.PenColor);
+
+   VP.WorldToSurfaceXY(Points[0].x, Points[0].y, px1, py1);
+   VP.WorldToSurfaceXY(Points[1].x, Points[1].y, px2, py2);
+   if Surface.Canvas <> nil then
+   begin
+     Surface.Canvas.Brush.Style := bsSolid;
+     Surface.Canvas.Rectangle(px1, py1, px2, py2);
+     Surface.Canvas.Brush.Style := bsClear;
+   end;
+   Surface.Canvas.Pen.FPColor:= saveColor;
+   Surface.Canvas.Brush.FPColor:= saveBrushColor;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFillRectangle(Points: array of TRealPoint);
+begin
+  DrawFillRectangle(FViewPort, Points);
+end;
+
+procedure TFPNoGUIGraphicsBridge.TextOut(VP: TViewPort; P: TRealPoint; txt: string);
+var
+  px1, py1: integer;
+  saveSize: integer;
+begin
+  VP.WorldToSurfaceXY(P.x, P.y, px1, py1);
+  if Surface.Canvas <> nil then
+  begin
+    saveSize:= Surface.Canvas.Font.Size;
+    Surface.Canvas.Font.Size:= VP.FontSize;
+    Surface.Canvas.TextOut(px1, py1, txt);
+    Surface.Canvas.Font.Size:= saveSize;
+  end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.TextOut(P: TRealPoint; txt: string);
+begin
+   TextOut(FViewPort, P, txt);
+end;
+
+procedure TFPNoGUIGraphicsBridge.TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer; textColor: TTFPColorBridge);
+var
+  px1, py1: integer;
+  saveSize: integer;
+  saveColor: TFPColor;
+begin
+  VP.WorldToSurfaceXY(P.x, P.y, px1, py1);
+  if Surface.Canvas <> nil then
+  begin
+    saveColor:= Surface.Canvas.Font.FPColor;
+    Surface.Canvas.Font.FPColor:= ToTFPColor(textColor);
+    saveSize:= Surface.Canvas.Font.Size;
+    Surface.Canvas.Font.Size:= fontSize;
+    Surface.Canvas.TextOut(px1, py1, txt);
+    Surface.Canvas.Font.Size:= saveSize;
+    Surface.Canvas.Font.FPColor:= saveColor;
+  end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.TextOut(P: TRealPoint; txt: string; fontSize: integer; textColor:  TTFPColorBridge);
+begin
+  TextOut(FViewPort, P, txt, fontSize, textColor);
+end;
+
 procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean; VP: TViewPort; SelectedIndex: integer);
 var
    i: integer;
@@ -3588,7 +3786,6 @@ begin
    Surface.Canvas.Font.FPColor:= ToTFPColor(FViewPort.FontColor);
    Surface.FreeTypeFont.Size:= FViewPort.FontSize;
 
-
    if  titY <> '' then
       Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
 
@@ -3598,8 +3795,8 @@ begin
    tw:= 0;
    if  VP.Title <> '' then
    begin
-      tw:= Trunc(Surface.Canvas.GetTextWidth(VP.Title)/2);
-      Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop+ Trunc(VP.MarginTop/2) ,VP.Title);
+     tw:= Trunc( Surface.Canvas.GetTextWidth(VP.Title)/2 );
+     Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop + Trunc(VP.MarginTop/2) ,VP.Title);
    end;
 
    if FViewPort.DrawGrid then
@@ -3797,7 +3994,7 @@ end;
 
 procedure TFPNoGUIGraphicsBridge.SetFontAntiAliased(antiAliased: boolean);
 begin
-   Surface.FreeTypeFont.AntiAliased:= antiAliased;
+  Surface.FreeTypeFont.AntiAliased:= antiAliased;
 end;
 
 procedure TFPNoGUIGraphicsBridge.SetFontResolution(dpiResolution: integer);
