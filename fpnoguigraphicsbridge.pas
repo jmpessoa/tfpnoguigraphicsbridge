@@ -345,20 +345,21 @@ TEntity = class
 
        procedure DrawCircle(VP: TViewPort; Points: array of TRealPoint);
        procedure DrawCircle(Points: array of TRealPoint);
-
        procedure DrawFillCircle(VP: TViewPort; Points: array of TRealPoint);
        procedure DrawFillCircle(Points: array of TRealPoint);
-
        procedure DrawRectangle(VP: TViewPort; Points: array of TRealPoint);
        procedure DrawRectangle(Points: array of TRealPoint);
-
        procedure DrawFillRectangle(VP: TViewPort; Points: array of TRealPoint);
        procedure DrawFillRectangle(Points: array of TRealPoint);
+
        procedure TextOut(P:  TRealPoint; txt: string);
        procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string);
 
        procedure TextOut(P: TRealPoint; txt: string; fontSize: integer; textColor: TTFPColorBridge);
        procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer; textColor: TTFPColorBridge);
+
+       procedure TextOut(P: TRealPoint; txt: string; fontSize: integer);
+       procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer);
 
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
        //property Clearscreen: boolean read FClrscr write FClrscr;
@@ -3596,6 +3597,26 @@ begin
   TextOut(FViewPort, P, txt, fontSize, textColor);
 end;
 
+procedure TFPNoGUIGraphicsBridge.TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer);
+var
+  px1, py1: integer;
+  saveSize: integer;
+begin
+  VP.WorldToSurfaceXY(P.x, P.y, px1, py1);
+  if Surface.Canvas <> nil then
+  begin
+    saveSize:= Surface.Canvas.Font.Size;
+    Surface.Canvas.Font.Size:= fontSize;
+    Surface.Canvas.TextOut(px1, py1, txt);
+    Surface.Canvas.Font.Size:= saveSize;
+  end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.TextOut(P: TRealPoint; txt: string; fontSize: integer);
+begin
+  TextOut(FViewPort, P, txt, fontSize);
+end;
+
 procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean; VP: TViewPort; SelectedIndex: integer);
 var
    i: integer;
@@ -3863,14 +3884,12 @@ begin
 
                  if FViewPort.GridData.XShowLengend then
                     Surface.Canvas.TextOut(VP.WorldToSurfaceX(dn)- Round(tw/2)+ tws,VP.YTopGrid + VP.HeightGrid+7+th,
-                                            FloatToStrF(Abs(dn1),ffFixed,0,1));
+                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+FViewPort.GridData.XLengendDecorativeValue);
                end
                else dn:= dn + 1*dk;
 
                dn:= dn + FViewPort.GridData.XLegendInterval*dk;
             end;
-            //dk:= (VP.MaxY - VP.MinY)/FViewPort.GridData.YInterval;
-            //dn:= VP.MinY;
        end;
 
        insideY:= VP.WorldToSurfaceXY(0,VP.MinY,X,Y);
@@ -3902,7 +3921,7 @@ begin
 
                  if FViewPort.GridData.YShowLengend then
                     Surface.Canvas.TextOut(VP.XLeftGrid-3-tw-4+tws,VP.WorldToSurfaceY(dn)+Round(th/2),
-                                            FloatToStrF(Abs(dn1),ffFixed,0,1));
+                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+FViewPort.GridData.YLengendDecorativeValue);
                end
                else dn:= dn + 1*dk;
 

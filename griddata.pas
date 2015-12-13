@@ -28,6 +28,9 @@ type
    XLengendOffsetValue: real;
    YLengendOffsetValue: real;
 
+   XLengendDecorativeValue: string;
+   YLengendDecorativeValue: string;
+
    constructor Create;
    destructor Destroy; override;
 
@@ -65,6 +68,8 @@ begin
    YLengendOffsetValue:= 0;
    FXShowLengend:= True;
    FYShowLengend:= True;
+   XLengendDecorativeValue:= '';
+   YLengendDecorativeValue:= '';
 end;
 
 destructor TGridData.Destroy;
