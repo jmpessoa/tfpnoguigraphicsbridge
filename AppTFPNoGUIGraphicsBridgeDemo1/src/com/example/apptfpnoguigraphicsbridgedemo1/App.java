@@ -1,13 +1,12 @@
 package com.example.apptfpnoguigraphicsbridgedemo1;
 
-//Lamw: Lazarus Android Module Wizard - Version 0.6 - rev. 22 - 18 April - 2015
+//Lamw: Lazarus Android Module Wizard - Version 0.6 - rev. 36 - 03 August - 2015
 //Form Designer and Components development model!
-//Author: jmpessoa@hotmail.com
 //https://github.com/jmpessoa/lazandroidmodulewizard
 //http://forum.lazarus.freepascal.org/index.php/topic,21919.270.html
 
 //Android Java Interface for Pascal/Delphi XE5
-//And LAZARUS by jmpessoa@hotmail.com - december 2013
+//And LAZARUS by Jose Marques Pessoa [december 2013]
 
 //Developers
 //          Simon,Choi / Choi,Won-sik
@@ -17,6 +16,8 @@ package com.example.apptfpnoguigraphicsbridgedemo1;
 //          LoadMan    / Jang,Yang-Ho
 //                       wkddidgh@naver.com
 //                       http://blog.naver.com/wkddidgh
+
+//	    Jose Marques Pessoa  /  josemarquespessoa@gmail.com
 
 
 import java.lang.Override;
@@ -47,9 +48,8 @@ import android.util.Log;
 // http://stackoverflow.com/questions/16282294/show-title-bar-from-code
 public class App extends Activity {
     
-	private Controls       controls;    
-   
-
+	private Controls       controls;
+	   
     @Override
     public void onCreate(Bundle savedInstanceState) {
      super.onCreate(savedInstanceState);                            
@@ -82,41 +82,31 @@ public class App extends Activity {
     }
        
     @Override    
-    protected void onNewIntent(Intent intent) { super.onNewIntent(intent);
-    	                                        controls.jAppOnNewIntent();     }
+    protected void onNewIntent(Intent intent) {super.onNewIntent(intent); controls.jAppOnNewIntent();}
     
     @Override
-    protected void onDestroy()                { super.onDestroy(); 
-    	                                        controls.jAppOnDestroy();       }
+    protected void onDestroy() { super.onDestroy(); controls.jAppOnDestroy();}
     
     @Override
-    protected void onPause()                  { super.onPause();
-                                                //Log.i("jApp","onPause");
-    	                                        controls.jAppOnPause();         }    
+    protected void onPause() {super.onPause();  controls.jAppOnPause();}
     
     @Override
-    protected void onRestart()                { super.onRestart();
-                                                //Log.i("jApp","onRestart");
-    	                                        controls.jAppOnRestart();    	  }
-
+    protected void onRestart() {super.onRestart(); controls.jAppOnRestart();}
+                                    	                                        
     @Override
-    protected void onResume()                 { super.onResume();  
-    	                                        controls.jAppOnResume();        }
-
+    protected void onResume() { super.onResume(); controls.jAppOnResume();}  
+    	                                        
     @Override
-    protected void onStart()                  { super.onStart();
-                                                //Log.i("jApp","onStart");
-    	                                        controls.jAppOnStart();        }
+    protected void onStart() { super.onStart(); controls.jAppOnStart(); }
+                                                  	                                        
     @Override
-    protected void onStop()                   { super.onStop(); 
-    	                                        controls.jAppOnStop();          }
-
+    protected void onStop() { super.onStop(); controls.jAppOnStop();} 
+    	                                        
     @Override
-    public    void onBackPressed()            { controls.jAppOnBackPressed();   }
+    public    void onBackPressed() { controls.jAppOnBackPressed();}
     
     @Override
-    public    void onConfigurationChanged(Configuration newConfig)
-    {
+    public    void onConfigurationChanged(Configuration newConfig) {
     	super.onConfigurationChanged(newConfig);
     	controls.jAppOnRotate(newConfig.orientation);
     	controls.jAppOnConfigurationChanged();
@@ -127,26 +117,35 @@ public class App extends Activity {
       controls.jAppOnActivityResult(requestCode,resultCode,data);                                     
     }
 
-   //by jmpessoa: option menu support
-   @Override
-   public boolean onCreateOptionsMenu(Menu menu) {
-    	controls.jAppOnCreateOptionsMenu(menu);
-        return true;
-   }
-
    /*by jmpessoa: Handles menu item selections */
-   @Override
+/*	@Override
    public boolean onOptionsItemSelected(MenuItem item) {
       String caption = item.getTitle().toString();
       controls.jAppOnClickOptionMenuItem(item, item.getItemId(), caption, item.isChecked());
       return false;
    }
+*/
+// http://stackoverflow.com/questions/15686555/display-back-button-on-action-bar
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+        case android.R.id.home:
+            // app icon in action bar clicked; go home
+	    controls.jAppOnBackPressed();
+            return true;
+        default:
+		String caption = item.getTitle().toString();
+		controls.jAppOnClickOptionMenuItem(item, item.getItemId(), caption,
+				item.isChecked());
+		return true; //renabor
+    }
+}
 
  //by jmpessoa: context menu support -  Context menu items do not support icons!
    @Override    
    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
       super.onCreateContextMenu(menu, v, menuInfo);
-      Log.i("App.Java_onCreateContextMenu", "long_pressed!");
+      //Log.i("App.Java_onCreateContextMenu", "long_pressed!");
       controls.jAppOnCreateContextMenu(menu);              
    }
 
@@ -155,16 +154,33 @@ public class App extends Activity {
    public boolean onContextItemSelected(MenuItem item) {
    	  String caption = item.getTitle().toString();
    	  controls.jAppOnClickContextMenuItem(item, item.getItemId(), caption, item.isChecked());
-      return false;
+      return true; // stop propagating event
    }
-   
+
+   //by jmpessoa: option menu support
+   @Override
+   public boolean onCreateOptionsMenu(Menu menu) {
+	    controls.jAppOnCreateOptionsMenu(menu);
+        return true;
+   }   
    
    /*by jmpessoa: TODO :Handles prepare menu item*/
    @Override
    public boolean onPrepareOptionsMenu(Menu menu) {
-       super.onPrepareOptionsMenu(menu);
-       //TODO!!!!
-       return true;
+       //super.onPrepareOptionsMenu(menu);        
+	   boolean changeMenuItems = false;
+	   boolean continueChangingItem = true;
+	   	   
+	   changeMenuItems =controls.jAppOnPrepareOptionsMenu(menu, menu.size());
+	   	   
+       if (changeMenuItems) {    	  
+          for  (int  i = 0; i < menu.size(); i++) { 
+             MenuItem item = menu.getItem(i); 
+             continueChangingItem = controls.jAppOnPrepareOptionsItem(menu, item, i); 
+             if (!continueChangingItem)  break;
+          }         
+       } 
+       return super.onPrepareOptionsMenu(menu);
    }
    
    /*by jmpessoa: TODO :Handles opened menu */

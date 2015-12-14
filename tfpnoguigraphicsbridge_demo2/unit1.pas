@@ -46,7 +46,6 @@ begin
    ViewPort1.SetScaleXY(0 {minx}, 12 {maxx}, 0 {miny}, 12 {maxy});
 
    FPNoGUIGraphicsBridge1.PathToFontFile:= 'C:\Windows\Fonts\LUCON.TTF';
-
    //[android]  FPNoGUIGraphicsBridge1.PathToFontFile:= '/system/fonts/Roboto-Regular.ttf';
    //[linux]    FPNoGUIGraphicsBridge1.PathToFontFile:= '/usr/share/fonts/TTF/Arial.ttf';
 
