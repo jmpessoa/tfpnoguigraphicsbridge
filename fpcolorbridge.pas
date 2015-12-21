@@ -49,7 +49,7 @@ TTFPColorBridge = (
   colbrLightSteelBlue,colbrPowderBlue,colbrFireBrick,colbrDarkGoldenRod,
   colbrMediumOrchid,colbrRosyBrown,colbrDarkKhaki,colbrSilver,colbrNavy,
   colbrMediumVioletRed,colbrIndianRed,colbrPeru,colbrVioletRed,colbrFeldspar,
-  colbrChocolate,colbrTan,colbrLightGrey,colbrDarkBlue,colbrPaleVioletRed,
+  colbrChocolate,colbrTan,colbrLightGray,colbrDarkBlue,colbrPaleVioletRed,
   colbrThistle,colbrOrchid,colbrGoldenRod,colbrCrimson,colbrGainsboro,
   colbrPlum,colbrBurlyWood,colbrLightCyan,colbrLavender,colbrDarkSalmon,
   colbrViolet,colbrPaleGoldenRod,colbrLightCoral,colbrKhaki,colbrAliceBlue,

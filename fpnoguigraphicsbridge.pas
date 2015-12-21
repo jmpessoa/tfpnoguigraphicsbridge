@@ -31,6 +31,30 @@ type
 jbyte=shortint;       // signed 8 bits
 Pjbyte=^jbyte;
 
+TSlice = record
+   Data: real;
+   Caption: string;
+   Color: TTFPColorBridge;
+end;
+
+TLegend = record
+   x: real;
+   y: real;
+   Caption: string;
+   Color: TTFPColorBridge;
+end;
+
+TBar = record
+   Data: real;
+   Category: string;
+   Color: TTFPColorBridge;
+end;
+
+THistogram = record
+   Data: real;
+   Color: TTFPColorBridge;
+end;
+
 TColorRGB=packed record {copy from  ...\fcl-image\src\BMPcomn.pp}
    B,G,R:Byte;
 end;
@@ -361,6 +385,24 @@ TEntity = class
        procedure TextOut(P: TRealPoint; txt: string; fontSize: integer);
        procedure TextOut(VP: TViewPort; P: TRealPoint; txt: string; fontSize: integer);
 
+       procedure DrawEllipse(P: array of TRealPoint);
+       procedure DrawEllipse(VP: TViewPort; P: array of TRealPoint);
+
+       procedure DrawFillEllipse(P: array of TRealPoint);
+       procedure DrawFillEllipse(VP: TViewPort; P: array of TRealPoint);
+
+       procedure DrawDataPieSlices(EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
+       procedure DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
+
+       procedure DrawDataBars(bars: array of TBar);
+       procedure DrawDataBars(VP: TViewPort; bars: array of TBar);
+
+       procedure DrawDataHistograms(histograms: array of THistogram;  range: real);
+       procedure DrawDataHistograms(VP: TViewPort; histograms: array of THistogram; range: real);
+
+       procedure DrawDataLine(data: array of TRealPoint; legend: TLegend);
+       procedure DrawDataLine(VP: TViewPort; data: array of TRealPoint; legend: TLegend);
+
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
        //property Clearscreen: boolean read FClrscr write FClrscr;
     protected
@@ -379,8 +421,43 @@ TEntity = class
 function ReplaceChar(query: string; oldchar, newchar: char):string;
 function SplitStr(var theString : string; delimiter : string) : string;
 
+
+
+function ToSlice(partNumber: real; caption: string; partColor: TTFPColorBridge): TSlice;
+function ToBar(partNumber: real; category: string; partColor: TTFPColorBridge): TBar;
+
+function ToLegend(caption: string; partColor: TTFPColorBridge; x: real; y: real): TLegend;
+function ToHistogram(partNumber: real; partColor: TTFPColorBridge): THistogram;
+
 implementation
 
+function ToSlice(partNumber: real;  caption: string;  partColor: TTFPColorBridge): TSlice;
+begin
+  Result.Data:= partNumber;
+  Result.Color:= partColor;
+  Result.Caption:= caption;
+end;
+
+function ToLegend(caption: string; partColor: TTFPColorBridge; x: real; y: real): TLegend;
+begin
+  Result.x:= x;
+  Result.y:= y;
+  Result.Caption:= caption;
+  Result.Color:= partColor;
+end;
+
+function ToBar(partNumber: real;  category: string;  partColor: TTFPColorBridge): TBar;
+begin
+  Result.Data:= partNumber;
+  Result.Color:= partColor;
+  Result.Category:= category;
+end;
+
+function ToHistogram(partNumber: real; partColor: TTFPColorBridge): THistogram;
+begin
+  Result.Data:= partNumber;
+  Result.Color:= partColor;
+end;
 
 {TFEntityData}
 constructor TEntityData.Create;
@@ -1263,7 +1340,6 @@ begin
    Result:= dataStr;
 end;
 
-
 procedure TEntity.DrawCircle(Canvas: TFPCustomCanvas; centerX, centerY, radius: integer;  sTitle: string);
 begin
   if Canvas <> nil then
@@ -1315,9 +1391,12 @@ end;
 }
 
 {   l = 1 , q= ...
-FPNoGUIGraphicsBridge3.AddEntity(layer,'Arc',[Point(l, 0.0)= centro, Point(l/2, 0.0) = r ,Point(l, q) = final],
-                                                FloatToStrF(q, ffFixed, 0,1),'');
+FPNoGUIGraphicsBridge3.AddEntity(layer,'Arc',[Point(l, 0.0)= centro,
+                                              Point(l/2, 0.0) = r ,
+                                              Point(l, q) = final],
+                                              FloatToStrF(q, ffFixed, 0,1),'');
 }
+
 procedure TEntity.DrawArc(Canvas: TFPCustomCanvas; px1, py1, px2, py2, px3, py3: integer;  sTitle: string);
 var
    ar:  real;
@@ -2494,7 +2573,7 @@ begin
   FFreeTypeFont.Resolution:= 72; { or default resolution [97]  ??}
   //FFreeTypeFont.AntiAliased:= True;
   FFreeTypeFont.FontIndex:= 0;
-  FFreeTypeFont.Size:= 8;
+  FFreeTypeFont.Size:= 10;
   FFreeTypeFont.FPColor:= colBlack;
 
 end;
@@ -3449,6 +3528,53 @@ begin
   DrawPath(FViewPort, Points);
 end;
 
+
+procedure TFPNoGUIGraphicsBridge.DrawDataLine(VP: TViewPort; data: array of TRealPoint; legend: TLegend);
+var
+  i,X,Y, countPoints: integer;
+  inside: boolean;
+  saveColor: TFPColor;
+  saveColorVP: TTFPColorBridge;
+begin
+   saveColor:= Surface.Canvas.Pen.FPColor;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(legend.color);
+   countPoints:= Length(data);
+   VP.WorldToSurfaceXY(data[0].x, data[0].y,X,Y);
+   Surface.Canvas.MoveTo(X,Y);
+   for i:= 1 to countPoints-1 do
+   begin
+      inside:= VP.WorldToSurfaceXY(data[i].x,data[i].y ,X,Y);
+      if not VP.Cliping then
+      begin
+         Surface.Canvas.LineTo(X,Y)
+      end
+      else //clip
+      begin
+         if not inside then Surface.Canvas.MoveTo(X,Y) else  Surface.Canvas.LineTo(X,Y);
+      end;
+   end;
+
+   saveColorVP:= VP.PenColor;
+   VP.PenColor:= legend.color;
+
+   for i:= 0 to countPoints-1 do
+   begin
+     DrawFillCircle([ToRealPoint(data[i].x, data[i].y){center},ToRealPoint( data[i].x + {0.1} (VP.MaxX/VP.GridData.XInterval)/10 , data[i].y) {rX}]);
+   end;
+
+   DrawFillRectangle([ToRealPoint(legend.x, legend.y),ToRealPoint(legend.x + (VP.MaxX/VP.GridData.XInterval)/2,
+                                                                              legend.y - (VP.MaxY/VP.GridData.YInterval)/2)]);
+   TextOut(ToRealPoint(legend.x + (VP.MaxX/VP.GridData.XInterval)/1.7 , legend.y - (VP.MaxY/VP.GridData.YInterval)/2), legend.Caption);
+
+   VP.PenColor:= saveColorVP;
+   Surface.Canvas.Pen.FPColor:= saveColor;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataLine(data: array of TRealPoint; legend: TLegend);
+begin
+  DrawDataLine(FViewPort, data, legend);
+end;
+
 procedure TFPNoGUIGraphicsBridge.DrawFillCircle(VP: TViewPort; Points: array of TRealPoint);
 var
  centerX, centerY, radius: integer;
@@ -3524,7 +3650,6 @@ begin
   DrawRectangle(FViewPort, Points);
 end;
 
-
 procedure TFPNoGUIGraphicsBridge.DrawFillRectangle(VP: TViewPort; Points: array of TRealPoint);
 var
    px1, py1, px2, py2: integer;
@@ -3551,6 +3676,316 @@ end;
 procedure TFPNoGUIGraphicsBridge.DrawFillRectangle(Points: array of TRealPoint);
 begin
   DrawFillRectangle(FViewPort, Points);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawEllipse(VP: TViewPort; P: array of TRealPoint);
+var
+  px1, py1, px2, py2: integer;
+begin
+   VP.WorldToSurfaceXY(P[0].x, P[0].y, px1, py1);
+   VP.WorldToSurfaceXY(P[1].x, P[1].y, px2, py2);
+   if Surface.Canvas <> nil then
+   begin
+     Surface.Canvas.Ellipse(px1, py1, px2, py2);
+   end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawEllipse(P: array of TRealPoint);
+begin
+  DrawEllipse(FViewPort, P);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFillEllipse(VP: TViewPort; P: array of TRealPoint);
+var
+  px1, py1, px2, py2: integer;
+begin
+   VP.WorldToSurfaceXY(P[0].x, P[0].y, px1, py1);
+   VP.WorldToSurfaceXY(P[1].x, P[1].y, px2, py2);
+   if Surface.Canvas <> nil then
+   begin
+     Surface.Canvas.Brush.Style := bsSolid;
+     Surface.Canvas.Ellipse(px1, py1, px2, py2);
+     Surface.Canvas.Brush.Style := bsClear;
+   end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFillEllipse(P: array of TRealPoint);
+begin
+  DrawFillEllipse(FViewPort, P);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
+var
+  px1, py1, px2, py2, cx1, cy1, rx2, ry2, i, j, k, slen: integer;
+  cx, cy, rx, ry: real;
+  sliceAngStart, hotK: real;
+  sliceAngles: array of Real;
+  slicePercent: array of Real;
+  hotPointPercent: array of Real;
+  sliceDataTotal: real;
+  saveFontSize, saveFontWidth: integer;
+  saveColor: TFPColor;
+begin
+   cx:=  (EllipseRec[0].x+ EllipseRec[1].x)/2;
+   cy:=  (EllipseRec[0].y+ EllipseRec[1].y)/2;
+   VP.WorldToSurfaceXY(cx, cy, cx1, cy1);
+
+   slen:= Length(slices);
+   SetLength(sliceAngles, slen);
+   SetLength(slicePercent, slen);
+   SetLength(hotPointPercent, slen);
+
+   sliceDataTotal:= 0;
+   for i:= 0 to slen-1 do
+   begin
+     sliceDataTotal:= sliceDataTotal + slices[i].Data;
+   end;
+
+   for i:= 0 to slen-1 do
+   begin
+     sliceAngles[i]:=  (360*slices[i].Data)/sliceDataTotal;
+     slicePercent[i]:= (100*slices[i].Data)/sliceDataTotal;
+   end;
+
+   if Surface.Canvas <> nil then
+   begin
+     saveFontWidth:= Surface.Canvas.Pen.Width;
+     saveFontSize:= Surface.Canvas.Font.Size;
+
+     Surface.Canvas.Pen.Width:= 8;
+     Surface.Canvas.Font.Size:= VP.FontSize;
+     saveColor:= Surface.Canvas.Pen.FPColor;
+     Surface.Canvas.Pen.FPColor:= ToTFPColor(slices[0].Color);
+     sliceAngStart:= 0;
+     k:= Round(sliceAngles[0]);
+     for j:= 0 to  k-1 do
+     begin
+       GetExtremeLinePointByRotation(ToRadians(sliceAngStart+j),cx, cy, EllipseRec[1].x, cy, rx, ry, 2);
+       VP.WorldToSurfaceXY(rx, ry, rx2, ry2);
+       Surface.Canvas.Line(cx1, cy1, rx2, ry2);
+       if j < k/2 then
+       begin
+         hotK:= ToRadians(sliceAngStart+j);
+       end;
+     end;
+     hotPointPercent[0]:= hotK;
+
+     for i:= 1 to slen-1 do
+     begin
+       Surface.Canvas.Pen.FPColor:= ToTFPColor(slices[i].Color);
+       sliceAngStart:= sliceAngStart + sliceAngles[i-1];
+       k:= Round(sliceAngles[i]);
+       for j:= 0 to k-1 do
+       begin
+         GetExtremeLinePointByRotation(ToRadians(sliceAngStart+j),cx, cy, EllipseRec[1].x, cy, rx, ry, 2);
+         VP.WorldToSurfaceXY(rx, ry, rx2, ry2);
+         Surface.Canvas.Line(cx1, cy1, rx2, ry2);
+         if j < k/2 then
+         begin
+           hotK:= ToRadians(sliceAngStart+j);
+         end;
+       end;
+       hotPointPercent[i]:= hotK;
+     end;
+
+     hotPointPercent[i]:= hotK;
+     GetExtremeLinePointByRotation(hotK,cx, cy, cx + (EllipseRec[1].x - cx)/2, cy, rx, ry, 2);
+     VP.WorldToSurfaceXY(rx, ry, rx2, ry2);
+     Surface.Canvas.TextOut(rx2, ry2, FloatToStrF(slicePercent[i], ffFixed, 0, 1)+'%');
+
+     for i:= 0 to sLen-1 do
+     begin
+       GetExtremeLinePointByRotation(hotPointPercent[i],cx, cy, cx + (EllipseRec[1].x - cx)/2, cy, rx, ry, 2);
+       VP.WorldToSurfaceXY(rx, ry, rx2, ry2);
+       Surface.Canvas.TextOut(rx2, ry2, FloatToStrF(slicePercent[i], ffFixed, 0, 1)+'%');
+     end;
+
+     Surface.Canvas.Pen.Width:= 3;
+     Surface.Canvas.Pen.FPColor:= ToTFPColor(colbrWhite);
+     VP.WorldToSurfaceXY(EllipseRec[0].x, EllipseRec[0].y, px1, py1);
+     VP.WorldToSurfaceXY(EllipseRec[1].x, EllipseRec[1].y, px2, py2);
+     Surface.Canvas.Ellipse(px1-4, py1-4, px2+4, py2+4);
+
+     for i:= 0 to sLen-1 do
+     begin
+       VP.PenColor:= slices[i].Color;
+       DrawFillRectangle([ToRealPoint(EllipseRec[1].x+{0.5} (VP.MaxX/VP.GridData.XInterval)/2,EllipseRec[0].y-i),
+                          ToRealPoint(EllipseRec[1].x+{1} +(VP.MaxX/VP.GridData.XInterval),EllipseRec[0].y-{0.5}(VP.MaxY/VP.GridData.YInterval)/2-i)]); {left-top, right-bottom}
+       if showData then
+          TextOut(ToRealPoint(EllipseRec[1].x+(VP.MaxX/VP.GridData.XInterval)*1.1{1+0.2},EllipseRec[0].y-(VP.MaxY/VP.GridData.YInterval)/2{0.5}-i), slices[i].Caption +
+                          '['+FloatToStrF(slices[i].Data, ffFixed, 0, 1)+']')
+       else
+         TextOut(ToRealPoint(EllipseRec[1].x+(VP.MaxX/VP.GridData.XInterval)*1.1{1+0.2},EllipseRec[0].y-(VP.MaxY/VP.GridData.YInterval)/2{0.5}-i), slices[i].Caption);
+
+     end;
+
+   end;
+   Surface.Canvas.Pen.Width:= saveFontWidth;
+   Surface.Canvas.Font.Size:= saveFontSize;
+   Surface.Canvas.Pen.FPColor:= saveColor;
+
+   SetLength(sliceAngles, 0);
+   SetLength(slicePercent, 0);
+   SetLength(hotPointPercent, 0);
+
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataPieSlices(EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
+begin
+   DrawDataPieSlices(FViewPort, EllipseRec, slices, showData);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataBars(VP: TViewPort; bars: array of TBar);
+var
+  slen, i, px1, py1: integer;
+  barBaseY, barBaseX , by: real;
+  barH: array of Real;
+  barPercent: array of Real;
+  hotPointPercent: array of Real;
+  barDataTotal, maxData: real;
+  Rec: array of TRealPoint;
+  saveFontSize: integer;
+begin
+
+   SetLength(Rec, 4);
+   Rec[0].x:= VP.MinX;
+   Rec[1].x:= VP.MaxX;
+   Rec[0].y:= VP.MaxY;
+   Rec[1].y:= VP.MinY;
+
+   //bx:=  Rec[1].x - Rec[0].x;
+   by:=  Rec[0].y - Rec[1].y;
+
+   barBaseX:= Rec[0].x;
+   barBaseY:= Rec[1].y;
+   maxData:= Rec[0].y;
+
+   slen:= Length(bars);
+   SetLength(barH, slen);
+   SetLength(barPercent, slen);
+   SetLength(hotPointPercent, slen);
+
+   barDataTotal:= 0;
+   for i:= 0 to slen-1 do
+   begin
+     barDataTotal:= barDataTotal + bars[i].Data;
+   end;
+
+   for i:= 0 to slen-1 do
+   begin
+      barH[i]:=  (by*bars[i].Data)/maxData;
+      barPercent[i]:= (100*bars[i].Data)/barDataTotal;
+      hotPointPercent[i]:= barBaseY+ barH[i]/2;
+   end;
+
+   if Surface.Canvas <> nil then
+   begin
+     saveFontSize:= Surface.Canvas.Font.Size;
+     Surface.Canvas.Font.Size:= VP.FontSize;
+     for i:= 0 to slen-1 do
+     begin
+       VP.WorldToSurfaceXY(barBaseX, 0, px1, py1);
+       VP.PenColor:= bars[i].Color;
+
+       DrawFillRectangle(VP,[ToRealPoint(barBaseX, barBaseY+barH[i]), ToRealPoint(barBaseX + VP.MaxX/VP.GridData.XInterval,barBaseY)]);
+       //TextOut(ToRealPoint(barBaseX+0.1, hotPointPercent[i]), FloatToStrF(barPercent[i], ffFixed, 0, 1)+'%');
+       Surface.Canvas.TextOut(px1, py1 + VP.FontSize + 2 , bars[i].Category);
+
+       VP.WorldToSurfaceXY(barBaseX + (VP.MaxX/VP.GridData.XInterval)/10, barBaseY+barH[i], px1, py1);
+       Surface.Canvas.TextOut(px1, py1, FloatToStrF(bars[i].Data, ffFixed, 0, 1));
+
+       barBaseX:= barBaseX + (VP.MaxX/VP.GridData.XInterval)*2;
+     end;
+     Surface.Canvas.Font.Size:= saveFontSize;
+     DrawRectangle(VP, Rec);
+   end;
+
+   SetLength(barH, 0);
+   SetLength(barPercent, 0);
+   SetLength(hotPointPercent, 0);
+   SetLength(Rec, 0);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataBars({Rec: array of TRealPoint;} bars: array of TBar);
+begin
+   DrawDataBars(FViewPort, {Rec,} bars);
+end;
+
+
+procedure TFPNoGUIGraphicsBridge.DrawDataHistograms(VP: TViewPort; histograms: array of THistogram; range: real);
+var
+  slen, i, px1, py1: integer;
+  barBaseY, barBaseX , bx, by: real;
+  barH: array of Real;
+  barPercent: array of Real;
+  hotPointPercent: array of Real;
+  barDataTotal, maxData: real;
+  Rec: array of TRealPoint;
+  saveFontSize: integer;
+begin
+
+   SetLength(Rec, 4);
+   Rec[0].x:= VP.MinX;
+   Rec[1].x:= VP.MaxX;
+   Rec[0].y:= VP.MaxY;
+   Rec[1].y:= VP.MinY;
+
+   bx:=  Rec[1].x - Rec[0].x;
+   by:=  Rec[0].y - Rec[1].y;
+
+   barBaseX:= Rec[0].x;
+   barBaseY:= Rec[1].y;
+   maxData:= Rec[0].y;
+
+   slen:= Length(histograms);
+   SetLength(barH, slen);
+   SetLength(barPercent, slen);
+   SetLength(hotPointPercent, slen);
+
+   barDataTotal:= 0;
+   for i:= 0 to slen-1 do
+   begin
+     barDataTotal:= barDataTotal + histograms[i].Data;
+   end;
+
+   for i:= 0 to slen-1 do
+   begin
+      barH[i]:=  (by*histograms[i].Data)/maxData;
+      barPercent[i]:= (100*histograms[i].Data)/barDataTotal;
+      hotPointPercent[i]:= barBaseY+ barH[i]/2;
+   end;
+
+   if Surface.Canvas <> nil then
+   begin
+     saveFontSize:= Surface.Canvas.Font.Size;
+     Surface.Canvas.Font.Size:= VP.FontSize;
+
+     VP.GridData.XShowLengend:= False;
+     VP.WorldToSurfaceXY(barBaseX, 0, px1, py1);
+     Surface.Canvas.TextOut(px1, py1 + VP.FontSize + 2 , FloatToStrF(barBaseX, ffFixed, 0, 1));
+     for i:= 0 to slen-1 do
+     begin
+       VP.PenColor:= histograms[i].Color;
+       DrawFillRectangle(VP,[ToRealPoint(barBaseX, barBaseY+barH[i]), ToRealPoint(barBaseX + range,barBaseY)]);
+       //TextOut(ToRealPoint(barBaseX+0.1, hotPointPercent[i]), FloatToStrF(barPercent[i], ffFixed, 0, 1)+'%');
+       VP.WorldToSurfaceXY(barBaseX+(VP.MaxX/VP.GridData.XInterval)/10, barBaseY+barH[i], px1, py1);
+       Surface.Canvas.TextOut(px1, py1, FloatToStrF(histograms[i].Data, ffFixed, 0, 1));
+       barBaseX:= barBaseX + range;
+       VP.WorldToSurfaceXY(barBaseX, 0, px1, py1);
+       Surface.Canvas.TextOut(px1, py1 + VP.FontSize + 2 , FloatToStrF(barBaseX, ffFixed, 0, 1));
+     end;
+     Surface.Canvas.Font.Size:= saveFontSize;
+     DrawRectangle(VP, Rec);
+   end;
+   SetLength(barH, 0);
+   SetLength(barPercent, 0);
+   SetLength(hotPointPercent, 0);
+   SetLength(Rec, 0);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawDataHistograms(histograms: array of THistogram; range: real);
+begin
+   DrawDataHistograms(FViewPort, histograms,  range);
 end;
 
 procedure TFPNoGUIGraphicsBridge.TextOut(VP: TViewPort; P: TRealPoint; txt: string);
@@ -3776,10 +4211,10 @@ var
    saveFontSize: integer;
 begin
 
-   if VP = nil then VP:= FViewPort;
+   if VP = nil then Exit;
 
-   titX:= FViewPort.GridData.XTitle;
-   titY:= FViewPort.GridData.YTitle;
+   titX:= VP.GridData.XTitle;
+   titY:= VP.GridData.YTitle;
 
    saveFontSize:= Surface.FreeTypeFont.Size;
    saveFontColor:= Surface.Canvas.Font.FPColor;
@@ -3792,26 +4227,20 @@ begin
    if clearscr then
    begin
      Surface.Canvas.Brush.Style:= bsSolid;
-     Surface.Canvas.Brush.FPColor:= ToTFPColor(FViewPort.GridData.BackGroundColor);
+     Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.GridData.BackGroundColor);
      Surface.Canvas.FillRect(VP.XLeftGrid,VP.YTopGrid, VP.XLeftGrid+ VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid);
    end;
    Surface.Canvas.Brush.FPColor:= saveBrushColor;
 
    //frame grid color
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.GridData.Color);
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.GridData.Color);
    Surface.Canvas.Brush.Style:= bsClear;
    Surface.Canvas.Rectangle(VP.XLeftGrid,VP.YTopGrid, VP.XLeftGrid+ VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid);
 
    //grid color
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.GridData.Color);
-   Surface.Canvas.Font.FPColor:= ToTFPColor(FViewPort.FontColor);
-   Surface.FreeTypeFont.Size:= FViewPort.FontSize;
-
-   if  titY <> '' then
-      Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
-
-   if  titX <> '' then
-      Surface.Canvas.TextOut(VP.XLeftGrid+VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid+4,titX);
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.GridData.Color);
+   Surface.Canvas.Font.FPColor:= ToTFPColor(VP.FontColor);
+   Surface.FreeTypeFont.Size:= VP.FontSize;
 
    tw:= 0;
    if  VP.Title <> '' then
@@ -3820,9 +4249,10 @@ begin
      Surface.Canvas.TextOut(VP.XLeft + Trunc(VP.Width/2) - tw, VP.YTop + Trunc(VP.MarginTop/2) ,VP.Title);
    end;
 
-   if FViewPort.DrawGrid then
+   if VP.DrawGrid then
    begin
-       dk:= (VP.MaxX - VP.MinX)/FViewPort.GridData.XInterval;
+
+       dk:= (VP.MaxX - VP.MinX)/VP.GridData.XInterval;
        dn:= VP.MinX;
        while dn < VP.MaxX do
        begin
@@ -3832,9 +4262,9 @@ begin
        end;
    end;
 
-   if FViewPort.DrawGrid then
+   if VP.DrawGrid then
    begin
-       dk:= (VP.MaxY - VP.MinY)/FViewPort.GridData.YInterval;
+       dk:= (VP.MaxY - VP.MinY)/VP.GridData.YInterval;
        dn:= VP.MinY;
        while dn < VP.MaxY do   //ticks axis y
        begin
@@ -3845,10 +4275,16 @@ begin
    end;
 
    //axisColor
-   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.GridData.AxisColor);
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.GridData.AxisColor);
 
-   if FViewPort.DrawAxis = True then
+   if VP.DrawAxis = True then
    begin
+
+      if  titY <> '' then
+        Surface.Canvas.TextOut(VP.XLeftGrid-12,VP.YTopGrid,titY);
+
+      if  titX <> '' then
+        Surface.Canvas.TextOut(VP.XLeftGrid+VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid+4,titX);
 
        insideX:= VP.WorldToSurfaceXY(VP.MinX,0,X,Y);
        Surface.Canvas.MoveTo(X,Y);
@@ -3857,7 +4293,7 @@ begin
        if insideX then Surface.Canvas.LineTo(X,Y);  //axisX
 
        tws:= Surface.Canvas.GetTextWidth('-');
-       dk:= (VP.MaxX - VP.MinX)/FViewPort.GridData.XInterval;
+       dk:= (VP.MaxX - VP.MinX)/VP.GridData.XInterval;
        dn:= VP.MinX;
 
        if insideX then
@@ -3871,24 +4307,24 @@ begin
 
                tw:= Surface.Canvas.GetTextWidth(FloatToStrF(dn,ffFixed,0,1));
 
-               if FViewPort.GridData.XLegendInterval > 0 then
+               if VP.GridData.XLegendInterval > 0 then
                begin
-                 dn1:= dn + FViewPort.GridData.XLengendOffsetValue;  //makeup/maquiagem...
+                 dn1:= dn + VP.GridData.XLengendOffsetValue;  //makeup/maquiagem...
 
                  if dn1 < 0 then
                  begin
                       tws:= Surface.Canvas.GetTextWidth('-');
-                      if FViewPort.GridData.XShowLengend then
+                      if VP.GridData.XShowLengend then
                          Surface.Canvas.TextOut(VP.WorldToSurfaceX(dn) - Round(tw/2),VP.YTopGrid + VP.HeightGrid+7+th,'-');
                  end else tws:=0;
 
-                 if FViewPort.GridData.XShowLengend then
+                 if VP.GridData.XShowLengend then
                     Surface.Canvas.TextOut(VP.WorldToSurfaceX(dn)- Round(tw/2)+ tws,VP.YTopGrid + VP.HeightGrid+7+th,
-                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+FViewPort.GridData.XLengendDecorativeValue);
+                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+VP.GridData.XLengendDecorativeValue);
                end
                else dn:= dn + 1*dk;
 
-               dn:= dn + FViewPort.GridData.XLegendInterval*dk;
+               dn:= dn + VP.GridData.XLegendInterval*dk;
             end;
        end;
 
@@ -3897,7 +4333,7 @@ begin
        insideY:= VP.WorldToSurfaceXY(0,VP.MaxY,X,Y);
        if insideY then Surface.Canvas.LineTo(X,Y);  //axisY
 
-       dk:= (VP.MaxY - VP.MinY)/FViewPort.GridData.YInterval;
+       dk:= (VP.MaxY - VP.MinY)/VP.GridData.YInterval;
        dn:= VP.MinY;
        if insideY then
        begin
@@ -3909,23 +4345,23 @@ begin
 
                tw:= Surface.Canvas.GetTextWidth(FloatToStrF(dn,ffFixed,0,1))+2;
 
-               if FViewPort.GridData.YLegendInterval > 0 then
+               if VP.GridData.YLegendInterval > 0 then
                begin
-                 dn1:= dn + FViewPort.GridData.YLengendOffsetValue;  //makeup/maquiagem...
+                 dn1:= dn + VP.GridData.YLengendOffsetValue;  //makeup/maquiagem...
                  if dn1 < 0 then
                  begin
                       tws:= Surface.Canvas.GetTextWidth('-');
-                      if FViewPort.GridData.YShowLengend then
+                      if VP.GridData.YShowLengend then
                          Surface.Canvas.TextOut(VP.XLeftGrid-3-tw-4,VP.WorldToSurfaceY(dn)+Round(th/2),'-')
                  end else tws:=0;
 
-                 if FViewPort.GridData.YShowLengend then
+                 if VP.GridData.YShowLengend then
                     Surface.Canvas.TextOut(VP.XLeftGrid-3-tw-4+tws,VP.WorldToSurfaceY(dn)+Round(th/2),
-                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+FViewPort.GridData.YLengendDecorativeValue);
+                                            FloatToStrF(Abs(dn1),ffFixed,0,1)+VP.GridData.YLengendDecorativeValue);
                end
                else dn:= dn + 1*dk;
 
-               dn:= dn + FViewPort.GridData.YLegendInterval*dk;
+               dn:= dn + VP.GridData.YLegendInterval*dk;
             end;
        end;
    end;
@@ -3949,10 +4385,10 @@ procedure TFPNoGUIGraphicsBridge.PaintViewPort(VP: TViewPort);
 var
    saveColor: TFPColor;
 begin
-
+   if VP = nil then Exit;
    saveColor:= Surface.Canvas.Brush.FPColor;
    Surface.Canvas.Brush.Style:= bsSolid;
-   Surface.Canvas.Brush.FPColor:= ToTFPColor(FViewPort.BackGroundColor);
+   Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.BackGroundColor);
    Surface.Canvas.FillRect(VP.XLeft,VP.YTop, VP.XLeft+ VP.Width, VP.YTop+ VP.Height);
 
    Surface.Canvas.Brush.Style:= bsClear;
