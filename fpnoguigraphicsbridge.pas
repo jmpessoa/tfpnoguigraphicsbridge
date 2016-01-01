@@ -77,6 +77,8 @@ TRealPoints = array[0..MAXPOINTS] of TRealPoint;
 TFX = function(X: real): real;
 TDesignFX = procedure(x: real; out y:real; out skip: boolean) of object;
 
+TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) of object;
+
  TFCLImageBridge = class(TObject)
   private
     FImgMem: TFPCustomImage;
@@ -257,6 +259,10 @@ TEntity = class
     procedure DrawLinearDimension(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: integer; sTitle: string);
     procedure DrawLinearDimension(VP: TViewPort; Canvas: TFPCustomCanvas);
 
+
+    procedure DrawLineArrow(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: integer; sTitle: string; refPoint: integer {1 or 2});
+
+
     procedure DrawRadialDimension(VP: TViewPort; Canvas: TFPCustomCanvas; cx, cy, r: integer; sTitle: string);
     procedure DrawRadialDimension(VP: TViewPort; Canvas: TFPCustomCanvas);
 
@@ -286,17 +292,19 @@ TEntity = class
        FEntityData: TEntityData;
        FViewPort: TViewPort;
        FOnDesignFunction: TDesignFX;
-       //FDXFWriteBridge: TFPDxfWriteBridge;
-       //FClrscr: boolean;
+       FOnDesignParamFunction: TDesignParamFT;
 
-       //procedure SetDXFWriteBridge(AValue: TFPDxfWriteBridge);
        procedure SetViewPort(AValue: TViewPort);
        procedure DoDesignFunction(x: real; out y:real; out skip: boolean);
+       procedure DoDesignParamFunction(t: real; out x: real; out y:real; out skip: boolean);
+
        procedure SetWidth(AValue: integer);
        procedure SetHeight(AValue: integer);
        procedure SetPathToFontFile(pathToFile: string);
        procedure SetSize(W,H: integer);
        procedure SetSize(backgroundPNGFile: string);
+
+       procedure DrawArrow(V: array of TPoint);
     public
        Surface: TFCLImageBridge;
        EntityList: TList;
@@ -314,10 +322,13 @@ TEntity = class
        procedure PaintViewPort(VP: TViewPort);
        procedure PaintViewPort;
 
-       procedure DrawFunction(reset: boolean; SelectedIndex: integer);
-       procedure DrawFunction(reset: boolean; VP:TViewPort; SelectedIndex: integer);
-       procedure DrawFunction(reset: boolean; xmin, xmax: real);
-       procedure DrawFunction(reset: boolean);
+       procedure DrawFunction(clearscr: boolean; SelectedIndex: integer);
+       procedure DrawFunction(clearscr: boolean; VP:TViewPort; SelectedIndex: integer);
+
+       procedure DrawFunction(clearscr: boolean; xmin, xmax: real); //event driven
+       procedure DrawFunction(clearscr: boolean);               //event driven
+       procedure DrawParameterizedFunction(clearscr: boolean; tmin, tmax: real); //event driven
+
        procedure CopyToCanvas(Canvas: TFPCustomCanvas);
        function DrawEntity(VP: TViewPort; SelectedIndex: integer): TEntity;
        function DrawEntity(SelectedIndex: integer): TEntity;
@@ -388,8 +399,14 @@ TEntity = class
        procedure DrawEllipse(P: array of TRealPoint);
        procedure DrawEllipse(VP: TViewPort; P: array of TRealPoint);
 
+       procedure DrawPolygon(P: array of TRealPoint);
+       procedure DrawPolygon(VP: TViewPort; P: array of TRealPoint);
+
        procedure DrawFillEllipse(P: array of TRealPoint);
        procedure DrawFillEllipse(VP: TViewPort; P: array of TRealPoint);
+
+       procedure DrawLineArrow(VP: TViewPort; x1, y1, x2, y2: real; refLinePoint: integer {1 or 2 or any});
+       procedure DrawLineArrow(x1, y1, x2, y2: real;  refLinePoint: integer {1 or 2 or any});
 
        procedure DrawDataPieSlices(EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
        procedure DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
@@ -404,7 +421,7 @@ TEntity = class
        procedure DrawDataLine(VP: TViewPort; data: array of TRealPoint; legend: TLegend);
 
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
-       //property Clearscreen: boolean read FClrscr write FClrscr;
+
     protected
        procedure Loaded; override;
        procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -412,10 +429,11 @@ TEntity = class
        property Width: integer read FWidth write SetWidth;
        property Height: integer read  FHeight write setHeight;
 
-      // property DXFWriteBridge: TFPDxfWriteBridge read FDXFWriteBridge write SetDXFWriteBridge;
        property EntityData: TEntityData read FEntityData write FEntityData;
-       property OnDesignFunction: TDesignFX read FOnDesignFunction write FOnDesignFunction;
        property ActiveViewPort: TViewPort read FViewPort write SetViewPort;
+       property OnDrawFunction: TDesignFX read FOnDesignFunction write FOnDesignFunction;
+       property OnDrawParameterizedFunction: TDesignParamFT read FOnDesignParamFunction write FOnDesignParamFunction;
+
  end;
 
 function ReplaceChar(query: string; oldchar, newchar: char):string;
@@ -1667,6 +1685,83 @@ begin
                    FloatToStrF(distP1P2,ffFixed,0,2));
 end;
 
+ //TODO  :: Need fix it!
+procedure TEntity.DrawLineArrow(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: integer; sTitle: string; refPoint: integer {1 or 2});
+var
+   px,py, px1,py1, px2,py2, angle: real;
+   orthoX1,orthoY1,orthoX2,orthoY2: real;
+   distP1P2, dLineX1, dLineY1, dLineX2, dLineY2 : real;
+   idLineX1, idLineY1, idLineX2, idLineY2: integer;
+   iorthoX1, iorthoY1, iorthoX2, iorthoY2: integer;
+   ipx1, ipy1, ipx2, ipy2: integer;
+   x0, y0, x , y : integer;
+   lineSide: integer;
+begin
+   x0:=dx1;
+   y0:=dy1;
+   x:= dx2;
+   y:= dy2;
+
+   if FEntityData.LineToggleSide = tsSide1 then lineSide:= 1
+   else lineSide:= -1;
+
+   if EntityState = etLinearHorizontalDim then y:= y0;
+   if EntityState = etLinearVerticalDim then x:= x0;
+
+   distP1P2:= GetDistanceBetweenTwoPoints(VP.SurfaceToWorldX(x0),VP.SurfaceToWorldY(y0),
+                                          VP.SurfaceToWorldX(x),VP.SurfaceToWorldY(y));
+
+   GetLineParallel(lineSide*FEntityData.FDimLineOffset, x0, y0, x, y, dLineX1,dLineY1,dLineX2,dLineY2);
+
+   idLineX1:= Round(dLineX1);
+   idLineY1:= Round(dLineY1);
+   idLineX2:= Round(dLineX2);
+   idLineY2:= Round(dLineY2);
+
+   DrawLine(Canvas, idLineX1, idLineY1, idLineX2, idLineY2, 'DimLine');  //dimension line
+
+   GetLineOrthogonal(-FEntityData.FDimArrowSize{offset}, FEntityData.FDimArrowWidth {r}, dLineX1,dLineY1,dLineX2,dLineY2,
+                      orthoX1,orthoY1,orthoX2,orthoY2, px, py, 1);
+
+   iorthoX1:= Round(orthoX1);
+   iorthoY1:= Round(orthoY1);
+   iorthoX2:= Round(orthoX2);
+   iorthoY2:= Round(orthoY2);
+
+   DrawArrow(Canvas,[ToIntegerPoint(iorthoX1,iorthoY1),ToIntegerPoint(iorthoX2,iorthoY2),
+                      ToIntegerPoint(idLineX1,idLineY1),ToIntegerPoint(idLineX1,idLineY1)],'Arrow1');
+
+   GetLineOrthogonal(-FEntityData.FDimArrowSize{offset}, FEntityData.FDimArrowWidth {r},
+                      dLineX1,dLineY1,dLineX2,dLineY2, orthoX1,orthoY1,orthoX2,orthoY2, px, py, 2);
+
+   iorthoX1:= Round(orthoX1);
+   iorthoY1:= Round(orthoY1);
+   iorthoX2:= Round(orthoX2);
+   iorthoY2:= Round(orthoY2);
+
+   DrawArrow(Canvas, [ToIntegerPoint(iorthoX1,iorthoY1),ToIntegerPoint(iorthoX2,iorthoY2),
+             ToIntegerPoint(idLineX2,idLineY2),ToIntegerPoint(idLineX2,idLineY2)],'Arrow2');
+
+   GetLineTranslated(FEntityData.FDimExtensionLineGAP,x0, y0, dLineX1,dLineY1, px1, py1, px2, py2);
+   ipx1:=Round(px1);
+   ipy1:=Round(py1);
+   ipx2:=Round(px2);
+   ipy2:=Round(py2);
+   DrawLine(Canvas, ipx1, ipy1, ipx2, ipy2, 'ExtLine1');   //extLine1
+
+   GetLineTranslated(FEntityData.FDimExtensionLineGAP, x, y, dLineX2,dLineY2, px1, py1, px2, py2);
+   ipx1:=Round(px1);
+   ipy1:=Round(py1);
+   ipx2:=Round(px2);
+   ipy2:=Round(py2);
+   DrawLine(Canvas, ipx1, ipy1, ipx2, ipy2,'ExtLine2');  //extLine2
+
+   angle:= GetAngleOfLine(dLineX1,dLineY1,dLineX2,dLineY2);
+   FEntityData.AngleOfText:= ToDegrees(angle);
+   DrawText(Canvas, Round((dLineX1+dLineX2)/2),Round((dLineY1+dLineY2)/2),
+                   FloatToStrF(distP1P2,ffFixed,0,2));
+
+end;
 
 procedure TEntity.DrawLinearDimension(VP: TViewPort; Canvas: TFPCustomCanvas);
 var
@@ -1753,6 +1848,7 @@ begin
                    FloatToStrF(distP1P2,ffFixed,0,2));
  end;
 end;
+
 
 procedure TEntity.DrawParallelLine(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: real; sTitle: string);
 var
@@ -2799,6 +2895,14 @@ begin
    if Assigned(FOnDesignFunction) then FOnDesignFunction(x,y,skip);
 end;
 
+procedure TFPNoGUIGraphicsBridge.DoDesignParamFunction(t: real; out x: real; out y:real; out skip: boolean);
+begin
+   y:=0;
+   x:=0;
+   skip:= False;
+   if Assigned(FOnDesignParamFunction) then FOnDesignParamFunction(t,x,y,skip);
+end;
+
 function TFPNoGUIGraphicsBridge.AddEntity(AEntity: TEntity): integer;
 begin
   Result:= -1;
@@ -3536,6 +3640,7 @@ var
   saveColor: TFPColor;
   saveColorVP: TTFPColorBridge;
 begin
+
    saveColor:= Surface.Canvas.Pen.FPColor;
    Surface.Canvas.Pen.FPColor:= ToTFPColor(legend.color);
    countPoints:= Length(data);
@@ -3564,6 +3669,7 @@ begin
 
    DrawFillRectangle([ToRealPoint(legend.x, legend.y),ToRealPoint(legend.x + (VP.MaxX/VP.GridData.XInterval)/2,
                                                                               legend.y - (VP.MaxY/VP.GridData.YInterval)/2)]);
+
    TextOut(ToRealPoint(legend.x + (VP.MaxX/VP.GridData.XInterval)/1.7 , legend.y - (VP.MaxY/VP.GridData.YInterval)/2), legend.Caption);
 
    VP.PenColor:= saveColorVP;
@@ -3695,6 +3801,32 @@ begin
   DrawEllipse(FViewPort, P);
 end;
 
+
+procedure TFPNoGUIGraphicsBridge.DrawPolygon(VP: TViewPort; P: array of TRealPoint);
+var
+  px1, py1: integer;
+  count, i: integer;
+  V: array of TPoint;
+begin
+   count:= Length(P);
+   SetLength(V, count);
+   for i:=0 to count-1 do
+   begin
+       VP.WorldToSurfaceXY(P[i].x, P[i].y, px1, py1);
+       V[i].x:= px1;
+       V[i].y:= py1;
+   end;
+   if Surface.Canvas <> nil then
+   begin
+     Surface.Canvas.Polygon(V);
+   end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawPolygon(P: array of TRealPoint);
+begin
+  DrawPolygon(FViewPort, P);
+end;
+
 procedure TFPNoGUIGraphicsBridge.DrawFillEllipse(VP: TViewPort; P: array of TRealPoint);
 var
   px1, py1, px2, py2: integer;
@@ -3712,6 +3844,107 @@ end;
 procedure TFPNoGUIGraphicsBridge.DrawFillEllipse(P: array of TRealPoint);
 begin
   DrawFillEllipse(FViewPort, P);
+end;
+
+
+procedure TFPNoGUIGraphicsBridge.DrawArrow(V: array of TPoint);
+begin
+   if Surface.Canvas <> nil then
+   begin
+     Surface.Canvas.Polygon(V);
+   end;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawLineArrow(VP: TViewPort; x1, y1, x2, y2: real; refLinePoint: integer {1 or 2});
+var
+   px,py : real;
+   orthoX1,orthoY1,orthoX2,orthoY2: real;
+   {distP1P2,} dLineX1, dLineY1, dLineX2, dLineY2 : real;
+   idLineX1, idLineY1, idLineX2, idLineY2: integer;
+   iorthoX1, iorthoY1, iorthoX2, iorthoY2: integer;
+   x0, y0, x , y : integer;
+   lineSide: integer;
+   //angleRadian, AngleDegrees: real;
+   dx1, dy1, dx2, dy2: integer;
+begin
+
+   VP.WorldToSurfaceXY(x1, y1, dx1, dy1);
+   VP.WorldToSurfaceXY(x2, y2, dx2, dy2);
+
+   x0:=dx1;
+   y0:=dy1;
+   x:= dx2;
+   y:= dy2;
+
+   lineSide:= 1;
+   {
+   distP1P2:= GetDistanceBetweenTwoPoints(VP.SurfaceToWorldX(x0),VP.SurfaceToWorldY(y0),
+                                          VP.SurfaceToWorldX(x),VP.SurfaceToWorldY(y));
+   }
+   GetLineParallel(lineSide*0{lineSide*FDimLineOffset} , x0, y0, x, y, dLineX1,dLineY1,dLineX2,dLineY2);
+
+   idLineX1:= Round(dLineX1);
+   idLineY1:= Round(dLineY1);
+   idLineX2:= Round(dLineX2);
+   idLineY2:= Round(dLineY2);
+
+   Surface.Canvas.Line(idLineX1, idLineY1, idLineX2, idLineY2);  //dimension line = LineParallel
+
+   if (refLinePoint = 1) or (refLinePoint <> 2)  then
+   begin
+     GetLineOrthogonal(-12 {FDimArrowSize}{offset}, 4{DimArrowWidth} {r}, dLineX1,dLineY1,dLineX2,dLineY2,
+                        orthoX1,orthoY1,orthoX2,orthoY2, px, py, 1);
+
+     iorthoX1:= Round(orthoX1);
+     iorthoY1:= Round(orthoY1);
+     iorthoX2:= Round(orthoX2);
+     iorthoY2:= Round(orthoY2);
+
+     DrawArrow([ToIntegerPoint(iorthoX1,iorthoY1),ToIntegerPoint(iorthoX2,iorthoY2),
+                        ToIntegerPoint(idLineX1,idLineY1),ToIntegerPoint(idLineX1,idLineY1)]);
+   end;
+   if (refLinePoint = 2) or (refLinePoint <> 1) then
+   begin
+     GetLineOrthogonal(- 12 {FDimArrowSize}{offset}, 4{FDimArrowWidth} {r},
+                        dLineX1,dLineY1,dLineX2,dLineY2, orthoX1,orthoY1,orthoX2,orthoY2, px, py, 2);
+
+     iorthoX1:= Round(orthoX1);
+     iorthoY1:= Round(orthoY1);
+     iorthoX2:= Round(orthoX2);
+     iorthoY2:= Round(orthoY2);
+
+     DrawArrow([ToIntegerPoint(iorthoX1,iorthoY1),ToIntegerPoint(iorthoX2,iorthoY2),
+                ToIntegerPoint(idLineX2,idLineY2),ToIntegerPoint(idLineX2,idLineY2)]);
+
+   end;
+
+   {
+   GetLineTranslated4(FDimExtensionLineGAP,x0, y0, dLineX1,dLineY1, px1, py1, px2, py2);
+   ipx1:=Round(px1);
+   ipy1:=Round(py1);
+   ipx2:=Round(px2);
+   ipy2:=Round(py2);
+   Surface.Canvas.Line(ipx1, ipy1, ipx2, ipy2);   //extLine1
+
+   GetLineTranslated(4 {FDimExtensionLineGAP}, x, y, dLineX2,dLineY2, px1, py1, px2, py2);
+   ipx1:=Round(px1);
+   ipy1:=Round(py1);
+   ipx2:=Round(px2);
+   ipy2:=Round(py2);
+   Surface.Canvas.Line(ipx1, ipy1, ipx2, ipy2);  //extLine2
+   }
+
+   {
+   angleRadian:= GetAngleOfLine(x1, y1, x2, y2);
+   AngleDegrees:= ToDegrees(angleRadian);
+   Surface.Canvas.TextOut(idLineX2, idLineY2, IntToStr(Round(AngleDegrees)));
+   }
+
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawLineArrow(x1, y1, x2, y2: real; refLinePoint: integer);
+begin
+  DrawLineArrow(FViewPort, x1, y1, x2, y2, refLinePoint{1 or 2 or any});
 end;
 
 procedure TFPNoGUIGraphicsBridge.DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
@@ -3915,7 +4148,7 @@ end;
 procedure TFPNoGUIGraphicsBridge.DrawDataHistograms(VP: TViewPort; histograms: array of THistogram; range: real);
 var
   slen, i, px1, py1: integer;
-  barBaseY, barBaseX , bx, by: real;
+  barBaseY, barBaseX , by: real;
   barH: array of Real;
   barPercent: array of Real;
   hotPointPercent: array of Real;
@@ -3930,7 +4163,7 @@ begin
    Rec[0].y:= VP.MaxY;
    Rec[1].y:= VP.MinY;
 
-   bx:=  Rec[1].x - Rec[0].x;
+   //bx:=  Rec[1].x - Rec[0].x;
    by:=  Rec[0].y - Rec[1].y;
 
    barBaseX:= Rec[0].x;
@@ -4052,7 +4285,7 @@ begin
   TextOut(FViewPort, P, txt, fontSize);
 end;
 
-procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean; VP: TViewPort; SelectedIndex: integer);
+procedure TFPNoGUIGraphicsBridge.DrawFunction(clearscr: boolean; VP: TViewPort; SelectedIndex: integer);
 var
    i: integer;
    count: integer;
@@ -4065,7 +4298,7 @@ begin
    saveThickness:= Surface.Canvas.Pen.Width;
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
 
-   if reset then Surface.Canvas.Clear;
+   if clearscr then Surface.Canvas.Clear;
 
    count:= FunctionList.Count;
    if SelectedIndex < 0 then
@@ -4086,12 +4319,12 @@ begin
    Surface.Canvas.Pen.Width:= saveThickness;
 end;
 
-procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean; SelectedIndex: integer);
+procedure TFPNoGUIGraphicsBridge.DrawFunction(clearscr: boolean; SelectedIndex: integer);
 begin
-    DrawFunction(reset, FViewPort,SelectedIndex);
+    DrawFunction(clearscr, FViewPort,SelectedIndex);
 end;
 
-procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean; xmin, xmax: real);
+procedure TFPNoGUIGraphicsBridge.DrawFunction(clearscr: boolean; xmin, xmax: real);
 var
    wY: real;
    wX: real;
@@ -4112,7 +4345,7 @@ begin
    saveThickness:= Surface.Canvas.Pen.Width;
    Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
 
-   if reset then Surface.Canvas.Clear;
+   if clearscr then Surface.Canvas.Clear;
 
    wX:= xmin;
    DoDesignFunction(wX, wY, skip);
@@ -4144,7 +4377,75 @@ begin
    Surface.Canvas.Pen.Width:= saveThickness;
 end;
 
-procedure TFPNoGUIGraphicsBridge.DrawFunction(reset: boolean);
+{ hint:
+if y = f(x) then
+  x=t
+  y=f(t)
+
+  ex:
+  x = t
+  y= t*t+1
+
+}
+
+procedure TFPNoGUIGraphicsBridge.DrawParameterizedFunction(clearscr: boolean; tmin, tmax: real);
+var
+   wT: real;
+   wY: real;
+   wX: real;
+   Y: integer;
+   X: integer;
+   dt: real;
+   inside: boolean;
+   saveColorPen:  TFPColor;
+   saveThickness: integer;
+   skip: boolean;
+begin
+
+   dt:= (tmax - tmin)/MAXPOINTS;
+   if dt = 0 then exit;
+
+   saveColorPen:= Surface.Canvas.Pen.FPColor;
+   Surface.Canvas.Pen.FPColor:= ToTFPColor(FViewPort.PenColor);
+   saveThickness:= Surface.Canvas.Pen.Width;
+   Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
+
+   if clearscr then Surface.Canvas.Clear;
+
+   //wX:= xmin;
+   wT:= tmin;
+   DoDesignParamFunction(wT, wX, wY, skip);
+
+   FViewPort.WorldToSurfaceXY(wX, wY, X,Y);
+   Surface.Canvas.MoveTo(X,Y);
+   //wX:= wX + dx;
+   wT:= wT + dt;
+   while wT <= tmax do
+   begin
+     DoDesignParamFunction(wT, wX, wY, skip);
+     inside:= FViewPort.WorldToSurfaceXY(wX,wY,X,Y);
+     if not FViewPort.Cliping then
+     begin
+        if (not skip) then
+           Surface.Canvas.LineTo(X,Y)
+        else
+           Surface.Canvas.MoveTo(X,Y)
+     end
+     else //clip
+     begin
+        if (not inside) or (skip) then
+           Surface.Canvas.MoveTo(X,Y)
+        else
+           Surface.Canvas.LineTo(X,Y);
+     end;
+     wT:= wT + dt;
+   end;
+
+   Surface.Canvas.Pen.FPColor:= saveColorPen;
+   Surface.Canvas.Pen.Width:= saveThickness;
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawFunction(clearscr: boolean);
 var
    wY: real;
    wX, xmax, xmin: real;
@@ -4168,7 +4469,7 @@ begin
      saveThickness:= Surface.Canvas.Pen.Width;
      Surface.Canvas.Pen.Width:= FViewPort.PenThickness;
 
-     if reset then Surface.Canvas.Clear;
+     if clearscr then Surface.Canvas.Clear;
 
      wX:= xmin;
      DoDesignFunction(wX, wY, skip);
