@@ -259,9 +259,7 @@ TEntity = class
     procedure DrawLinearDimension(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: integer; sTitle: string);
     procedure DrawLinearDimension(VP: TViewPort; Canvas: TFPCustomCanvas);
 
-
     procedure DrawLineArrow(VP: TViewPort; Canvas: TFPCustomCanvas; dx1, dy1, dx2, dy2: integer; sTitle: string; refPoint: integer {1 or 2});
-
 
     procedure DrawRadialDimension(VP: TViewPort; Canvas: TFPCustomCanvas; cx, cy, r: integer; sTitle: string);
     procedure DrawRadialDimension(VP: TViewPort; Canvas: TFPCustomCanvas);
@@ -2666,7 +2664,7 @@ begin
   Canvas.Pen.FPColor:= colRed;
 
   FFreeTypeFont:=TFreeTypeFont.Create; //On Windows install: zlib1.dll, freetype6.dll -->Rename to: freetype-6.dll
-  FFreeTypeFont.Resolution:= 72; { or default resolution [97]  ??}
+  FFreeTypeFont.Resolution:= 96; { or default resolution [97]  ??}
   //FFreeTypeFont.AntiAliased:= True;
   FFreeTypeFont.FontIndex:= 0;
   FFreeTypeFont.Size:= 10;
@@ -4531,7 +4529,9 @@ begin
      Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.GridData.BackGroundColor);
      Surface.Canvas.FillRect(VP.XLeftGrid,VP.YTopGrid, VP.XLeftGrid+ VP.WidthGrid, VP.YTopGrid+ VP.HeightGrid);
    end;
+
    Surface.Canvas.Brush.FPColor:= saveBrushColor;
+   Surface.Canvas.Pen.Width:= VP.PenThickness;
 
    //frame grid color
    Surface.Canvas.Pen.FPColor:= ToTFPColor(VP.GridData.Color);
@@ -4552,7 +4552,6 @@ begin
 
    if VP.DrawGrid then
    begin
-
        dk:= (VP.MaxX - VP.MinX)/VP.GridData.XInterval;
        dn:= VP.MinX;
        while dn < VP.MaxX do

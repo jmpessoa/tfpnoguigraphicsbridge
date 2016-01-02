@@ -43,8 +43,9 @@ type
      FPenColor: TTFPColorBridge;
 
      FFontHeight: Integer;
-
      FFontColor: TTFPColorBridge;
+     //FFontResolution: integer;
+     //FFontAntialiesed: boolean;
      FBackGroundColor: TTFPColorBridge;
 
      FOnChangePenThickness: TChangeFontEvent;
@@ -118,8 +119,9 @@ type
      property PenThickness: integer read FPenThickness write SetPenThickness;
      property PenColor: TTFPColorBridge read FPenColor write SetPenColor;
      property FontSize: Integer read FFontHeight  write SetFontHeight;
-
      property FontColor: TTFPColorBridge read FFontColor write SetFontColor;
+     //property FontResolution: integer read FFontResolution write SetFontResolution;
+     //property FontAntialiesed: boolean read FFontAntialiesed write SetFontAntialiesed;
      property BackgroundColor: TTFPColorBridge read FBackGroundColor write SetBackGroundColor;
      property DrawGrid: boolean read FDrawGrid write FDrawGrid;
      property DrawAxis: boolean read FDrawAxis write FDrawAxis;
