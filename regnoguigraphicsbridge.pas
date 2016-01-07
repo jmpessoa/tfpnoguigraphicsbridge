@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  GridData, ViewPort, FPNoGUIGraphicsBridge,
+  ViewPort, FPNoGUIGraphicsBridge,
   LResources ;
 
 Procedure Register;

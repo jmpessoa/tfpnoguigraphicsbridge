@@ -4690,7 +4690,6 @@ begin
    Surface.Canvas.Brush.Style:= bsSolid;
    Surface.Canvas.Brush.FPColor:= ToTFPColor(VP.BackGroundColor);
    Surface.Canvas.FillRect(VP.XLeft,VP.YTop, VP.XLeft+ VP.Width, VP.YTop+ VP.Height);
-
    Surface.Canvas.Brush.Style:= bsClear;
    Surface.Canvas.Brush.FPColor:= saveColor;
 end;
