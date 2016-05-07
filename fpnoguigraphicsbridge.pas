@@ -86,6 +86,8 @@ TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) 
     FPngImgWriter: TFPCustomImageWriter;
     FFreeTypeFont: TFreeTypeFont;
     function FPColorToRGBA(Const Color : TFPColor) : TColorRGBA;
+    function RGBAToFPColor(Const Color : TColorRGBA) : TFPColor;
+
   public
     Width: integer;
     Height: integer;
@@ -103,6 +105,9 @@ TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) 
 
     function GetRGBAGraphics(const buffer: PByte): boolean;  overload;
     function GetRGBAGraphics(const buffer: PJByte): boolean; overload; //android
+
+    function SetRGBAGraphics(const buffer: PByte): boolean;  overload;
+    function SetRGBAGraphics(const buffer: PJByte): boolean;  overload; //android
 
     procedure SetSize(W,H: integer);
     procedure SetSize(backgroundPNGFile: string);
@@ -2709,6 +2714,17 @@ begin
   end;
 end;
 
+function TFCLImageBridge.RGBAToFPColor(Const Color : TColorRGBA) : TFPColor;
+begin
+  with Result,Color do
+  begin
+    Red:=(R and $00FF) shl 8;
+    Green:=(G and $00FF) shl 8;
+    Blue:=(B  and $00FF) shl 8;
+    Alpha:=(A and $00FF) shl 8;
+  end;
+end;
+
  function TFCLImageBridge.GetRGBAGraphics(const buffer: PByte): boolean;
  var
    i, col, row: integer;
@@ -2734,9 +2750,39 @@ end;
    end;
  end;
 
-function TFCLImageBridge.GetRGBAGraphics(const buffer: PJByte): boolean;
+ function TFCLImageBridge.GetRGBAGraphics(const buffer: PJByte): boolean;
+ begin
+     Result:= Self.GetRGBAGraphics(PByte(buffer));
+ end;
+
+function TFCLImageBridge.SetRGBAGraphics(const buffer: PByte): boolean;
+var
+  i, col, row: integer;
+  rgba: TColorRGBA;
 begin
-    Result:= Self.GetRGBAGraphics(PByte(buffer));
+  Result:= True;
+  try
+    i:=0;
+    for row:= 0 to FImgMem.Height-1 do
+    begin
+      for col:= 0 to FImgMem.Width-1 do
+      begin
+        rgba.R:= buffer[i*4];
+        rgba.G:= buffer[i*4+1];
+        rgba.B:= buffer[i*4+2];
+        rgba.A:= buffer[i*4+3];  //-1, that's the alpha.
+        FImgMem.Colors[col,row]:=  RGBAToFPColor(rgba);
+        inc(i);
+      end;
+    end;
+  except
+    Result:= False;
+  end;
+end;
+
+function TFCLImageBridge.SetRGBAGraphics(const buffer: PJByte): boolean;
+begin
+   Result:= Self.SetRGBAGraphics(PByte(buffer));
 end;
 
 procedure TFCLImageBridge.SetSize(W, H: integer);
