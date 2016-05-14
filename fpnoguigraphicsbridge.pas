@@ -85,8 +85,17 @@ TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) 
     FPngImgReader: TFPCustomImageReader;
     FPngImgWriter: TFPCustomImageWriter;
     FFreeTypeFont: TFreeTypeFont;
+    FThresholdGray: word;
+    FBinaryscaleGrayThreshold: TFPColor;
+
     function FPColorToRGBA(Const Color : TFPColor) : TColorRGBA;
     function RGBAToFPColor(Const Color : TColorRGBA) : TFPColor;
+
+    function Grayscale(color: TFPColor): TFPColor;
+    function Binaryscale(color: TFPColor): TFPColor;  //; threshold: integer
+    function GetPixel(col, row: integer): TFPColor;
+    procedure SetPixel(col, row: integer; color: TFPColor);
+    procedure SetBinaryscaleGrayThreshold(value: TFPColor);
 
   public
     Width: integer;
@@ -109,11 +118,26 @@ TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) 
     function SetRGBAGraphics(const buffer: PByte): boolean;  overload;
     function SetRGBAGraphics(const buffer: PJByte): boolean;  overload; //android
 
+    function GetInvertedscaleRGBAGraphics(const buffer: PByte): boolean;
+    function GetInvertedscaleRGBAGraphics(const buffer: PJByte): boolean;  //android
+
+    function Brightness(color: TFPColor): integer;
+
+    function GetGrayscaleRGBAGraphics(const buffer: PJByte): boolean;
+    function GetGrayscaleRGBAGraphics(const buffer: PByte): boolean;
+
+    function GetBinaryscaleRGBAGraphics(const buffer: PJByte): boolean;  //TODO
+    function GetBinaryscaleRGBAGraphics(const buffer: PByte): boolean;
+
     procedure SetSize(W,H: integer);
     procedure SetSize(backgroundPNGFile: string);
     procedure SetFont(pathToFile: string);
 
-    property  FreeTypeFont: TFreeTypeFont read FFreeTypeFont write FFreeTypeFont;
+    property FreeTypeFont: TFreeTypeFont read FFreeTypeFont write FFreeTypeFont;
+    property BinaryscaleGrayThreshold: TFPColor read FBinaryscaleGrayThreshold write SetBinaryscaleGrayThreshold;
+
+    //http://docwiki.embarcadero.com/RADStudio/Berlin/en/Properties_(Delphi)
+    property Pixel[col,row: integer]: TFPColor read GetPixel write SetPixel; default;
 
 end;
 
@@ -2675,6 +2699,9 @@ begin
   FFreeTypeFont.Size:= 10;
   FFreeTypeFont.FPColor:= colBlack;
 
+  BinaryscaleGrayThreshold:= colDkGray;
+  FThresholdGray:= 16384
+
 end;
 
 destructor TFCLImageBridge.Destroy;
@@ -2752,8 +2779,155 @@ end;
 
  function TFCLImageBridge.GetRGBAGraphics(const buffer: PJByte): boolean;
  begin
-     Result:= Self.GetRGBAGraphics(PByte(buffer));
+   Result:= Self.GetRGBAGraphics(PByte(buffer));
  end;
+
+ function TFCLImageBridge.GetInvertedscaleRGBAGraphics(const buffer: PByte): boolean;
+ var
+   i, col, row: integer;
+   rgba: TColorRGBA;
+ begin
+   Result:= True;
+   try
+     i:=0;
+     for row:= 0 to FImgMem.Height-1 do
+     begin
+       for col:= 0 to FImgMem.Width-1 do
+       begin
+         rgba:= FPColorToRGBA(FImgMem.Colors[col,row]);
+         buffer[i*4]:=   255 - rgba.R;
+         buffer[i*4+1]:= 255 - rgba.G;
+         buffer[i*4+2]:= 255 - rgba.B;
+         buffer[i*4+3]:= rgba.A; //-1, that's the alpha.
+         inc(i);
+       end;
+     end;
+   except
+     Result:= False;
+   end;
+ end;
+
+ function TFCLImageBridge.GetInvertedscaleRGBAGraphics(const buffer: PJByte): boolean;
+ begin
+   Result:= Self.GetInvertedscaleRGBAGraphics(PByte(buffer));
+ end;
+
+function TFCLImageBridge.Grayscale(color: TFPColor): TFPColor;
+var r: integer;
+begin
+
+  r:= Trunc(0.21*color.Red +    //0.3
+            0.72*color.Green+   //0.59
+            0.07*color.Blue);   //0.11
+
+  Result.Red:= r;
+  Result.Green:= r;
+  Result.Blue:= r;
+  Result.Alpha:= color.Alpha;
+
+end;
+
+function TFCLImageBridge.GetGrayscaleRGBAGraphics(const buffer: PByte): boolean;
+ var
+   i, col, row: integer;
+   rgba: TColorRGBA;
+ begin
+   Result:= True;
+   try
+     i:=0;
+     for row:= 0 to FImgMem.Height-1 do
+     begin
+       for col:= 0 to FImgMem.Width-1 do
+       begin
+         rgba:= FPColorToRGBA(Grayscale( FImgMem.Colors[col,row]));
+         buffer[i*4]:=  rgba.R;
+         buffer[i*4+1]:= rgba.G;
+         buffer[i*4+2]:= rgba.B;
+         buffer[i*4+3]:= rgba.A; //-1, that's the alpha.
+         inc(i);
+       end;
+     end;
+   except
+     Result:= False;
+   end;
+ end;
+
+function TFCLImageBridge.GetGrayscaleRGBAGraphics(const buffer: PJByte): boolean;
+begin
+  Result:= Self.GetGrayscaleRGBAGraphics(PByte(buffer));
+end;
+
+function TFCLImageBridge.Brightness(color: TFPColor): integer;
+begin
+
+  Result:= Trunc(Sqrt( color.Red * color.Red * 0.241 +
+                       color.Green * color.Green * 0.691 +
+                       color.Blue * color.Blue * 0.068));
+
+{Result:= Trunc(0.21*color.Red +   //0.3
+             0.72*color.Green+      //0.59
+             0.07*color.Blue);      //0.11}
+
+{Result:= Trunc(0.299*color.Red + 0.587*color.Green + 0.114*color.Blue);}
+
+end;
+
+procedure TFCLImageBridge.SetBinaryscaleGrayThreshold(value: TFPColor);
+begin
+   FBinaryscaleGrayThreshold:= value;
+   if value = colLtGray then
+       FThresholdGray:= 49152
+   else if value = colGray then
+       FThresholdGray:= 32768
+   else  FThresholdGray:= 16384;  //colDkGray
+end;
+
+//function CalculateGray (const From : TFPColor) : word;  // fpimage.pas
+//function AlphaBlend(color1, color2: TFPColor): TFPColor; // fpimage.pas
+//https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
+
+function TFCLImageBridge.Binaryscale(color: TFPColor): TFPColor;
+var
+  averageGray: Word;
+begin
+  averageGray:= color.Red;
+  //or averageGray:= Trunc( (color.Red + color.Green + color.Blue)/3 );
+  if averageGray <=  FThresholdGray then  //dark grey 16384   //grey 32768    //lit grey 49152
+     Result:= colBlack               //FPColor(0,0,0);  // opaque
+  else
+     Result:= colWhite;       //FPColor(255,255,255, 0); // "0" -> transparence //colTransparent   //
+end;
+
+function TFCLImageBridge.GetBinaryscaleRGBAGraphics(const buffer: PByte): boolean;
+ var
+   i, col, row: integer;
+   rgba: TColorRGBA;
+ begin
+   Result:= True;
+   try
+     i:=0;
+     for row:= 0 to FImgMem.Height-1 do
+     begin
+       for col:= 0 to FImgMem.Width-1 do
+       begin
+         rgba:= FPColorToRGBA(Binaryscale(FImgMem.Colors[col,row]));
+         buffer[i*4]:=  rgba.R;
+         buffer[i*4+1]:= rgba.G;
+         buffer[i*4+2]:= rgba.B;
+         buffer[i*4+3]:= rgba.A; //-1, that's the alpha.
+         inc(i);
+       end;
+     end;
+   except
+     Result:= False;
+   end;
+ end;
+
+function TFCLImageBridge.GetBinaryscaleRGBAGraphics(const buffer: PJByte): boolean;
+begin
+  Result:= Self.GetBinaryscaleRGBAGraphics(PByte(buffer));
+end;
+
 
 function TFCLImageBridge.SetRGBAGraphics(const buffer: PByte): boolean;
 var
@@ -2782,7 +2956,17 @@ end;
 
 function TFCLImageBridge.SetRGBAGraphics(const buffer: PJByte): boolean;
 begin
-   Result:= Self.SetRGBAGraphics(PByte(buffer));
+  Result:= Self.SetRGBAGraphics(PByte(buffer));
+end;
+
+function TFCLImageBridge.GetPixel(col, row: integer): TFPColor;
+begin
+   Result:= FImgMem.Colors[col,row];
+end;
+
+procedure TFCLImageBridge.SetPixel(col, row: integer; color: TFPColor);
+begin
+  FImgMem.Colors[col,row]:= color;
 end;
 
 procedure TFCLImageBridge.SetSize(W, H: integer);
