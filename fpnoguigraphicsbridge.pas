@@ -28,8 +28,17 @@ const
 
 type
 
-jbyte=shortint;       // signed 8 bits
-Pjbyte=^jbyte;
+ jbyte = shortint;       // signed 8 bits
+ Pjbyte =^jbyte;
+
+ TPoint3D = record
+     X,Y,Z : Real;
+  end;
+
+  TLine3D = record
+     P1, P2: TPoint3D;
+  end;
+
 
 TSlice = record
    Data: real;
@@ -75,6 +84,7 @@ TLineToggleSide = (tsSide1, tsSide2);
 
 TRealPoints = array[0..MAXPOINTS] of TRealPoint;
 TFX = function(X: real): real;
+
 TDesignFX = procedure(x: real; out y:real; out skip: boolean) of object;
 
 TDesignParamFT = procedure(t: real; out x: real; out y:real; out skip: boolean) of object;
@@ -336,6 +346,7 @@ TEntity = class
        Surface: TFCLImageBridge;
        EntityList: TList;
        FunctionList: TList;
+       Lines3DDynArray: Array of TLine3D;
 
        constructor Create(AOwner: TComponent); override;
        destructor Destroy; override;
@@ -374,12 +385,14 @@ TEntity = class
        function AddEntity(AEntity: TEntity): integer;
        function AddFunction(F: TFX; xmin, xmax: real): integer;
        function AddFunction(Pts: array of TRealPoint): integer;
+
        procedure ClearEntityList;
        procedure ClearEntityListByLayer(layer: string);
        procedure DeleteEntity(index: integer);
 
        procedure ClearFunctionList;
        procedure ClearSurface;
+
        procedure ClearSurfaceByViewPort(VP: TViewPort);
        function GetFunction(index: integer): TFunction;
        function GetEntity(index: integer): TEntity;
@@ -435,6 +448,10 @@ TEntity = class
        procedure DrawLineArrow(VP: TViewPort; x1, y1, x2, y2: real; refLinePoint: integer {1 or 2 or any});
        procedure DrawLineArrow(x1, y1, x2, y2: real;  refLinePoint: integer {1 or 2 or any});
 
+       procedure DrawLine(VP: TViewPort; x1, y1, x2, y2: real);
+       procedure DrawLine(x1, y1, x2, y2: real);
+
+
        procedure DrawDataPieSlices(EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
        procedure DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
 
@@ -446,6 +463,22 @@ TEntity = class
 
        procedure DrawDataLine(data: array of TRealPoint; legend: TLegend);
        procedure DrawDataLine(VP: TViewPort; data: array of TRealPoint; legend: TLegend);
+
+       //https://tianjara.net/blog/tags/projections/
+       Procedure Projection3Dxy(P: TPoint3D; radAng1, radAng2: real; var x, y:real);
+       Procedure Rotate3Dy(P: TPoint3D; Rad: Real; var x, z: real); overload;
+       Procedure Rotate3Dz(P: TPoint3D; Rad: Real; var x, y: real); overload;
+       Procedure Rotate3Dy(var lines3D: array of TLine3D; Deg: Real); overload;
+       Procedure Rotate3Dz(var lines3D: array of TLine3D; Deg: Real); overload;
+       Procedure Rotate3Dy(Deg: Real);  overload;
+       Procedure Rotate3Dz(Deg: Real); overload;
+       Procedure Draw3D(lines3D: Array of TLine3D); overload;
+       Procedure Draw3D(); overload;
+       procedure AddLine3D(line3D: TLine3D); overload;
+       procedure AddLine3D(x1, y1, z1: real; x2, y2, z2: real);  overload;
+       procedure ChangeLine3D(index: integer; x1, y1, z1: real; x2, y2, z2: real);  overload;
+       procedure ChangeLine3D(var lines3D: Array of TLine3D;
+                              index: integer; x1, y1, z1: real; x2, y2, z2: real);  overload;
 
        property PathToFontFile: string read FPathToFontFile write SetPathToFontFile;
 
@@ -466,15 +499,25 @@ TEntity = class
 function ReplaceChar(query: string; oldchar, newchar: char):string;
 function SplitStr(var theString : string; delimiter : string) : string;
 
-
-
 function ToSlice(partNumber: real; caption: string; partColor: TTFPColorBridge): TSlice;
 function ToBar(partNumber: real; category: string; partColor: TTFPColorBridge): TBar;
 
 function ToLegend(caption: string; partColor: TTFPColorBridge; x: real; y: real): TLegend;
 function ToHistogram(partNumber: real; partColor: TTFPColorBridge): THistogram;
+function ToLine3D(x1, y1, z1: real; x2, y2, z2: real): TLine3D;
 
 implementation
+
+function ToLine3D(x1, y1, z1: real; x2, y2, z2: real): TLine3D;
+begin
+  Result.P1.x:= x1;
+  Result.P1.y:= y1;
+  Result.P1.z:= z1;
+  Result.P2.x:= x2;
+  Result.P2.y:= y2;
+  Result.P2.z:= z2;
+end;
+
 
 function ToSlice(partNumber: real;  caption: string;  partColor: TTFPColorBridge): TSlice;
 begin
@@ -4175,6 +4218,20 @@ begin
   DrawLineArrow(FViewPort, x1, y1, x2, y2, refLinePoint{1 or 2 or any});
 end;
 
+procedure TFPNoGUIGraphicsBridge.DrawLine(VP: TViewPort; x1, y1, x2, y2: real);
+var
+   dx1, dy1, dx2, dy2: integer;
+begin
+   VP.WorldToSurfaceXY(x1, y1, dx1, dy1);
+   VP.WorldToSurfaceXY(x2, y2, dx2, dy2);
+   Surface.Canvas.Line(dx1, dy1, dx2, dy2);
+end;
+
+procedure TFPNoGUIGraphicsBridge.DrawLine(x1, y1, x2, y2: real);
+begin
+  DrawLine(FViewPort, x1, y1, x2, y2);
+end;
+
 procedure TFPNoGUIGraphicsBridge.DrawDataPieSlices(VP: TViewPort; EllipseRec: array of TRealPoint; slices: array of TSlice; showData: boolean);
 var
   px1, py1, px2, py2, cx1, cy1, rx2, ry2, i, j, k, slen: integer;
@@ -4728,6 +4785,170 @@ begin
      Surface.Canvas.Pen.Width:= saveThickness;
 end;
 
+//https://tianjara.net/blog/tags/projections/
+Procedure TFPNoGUIGraphicsBridge.Projection3Dxy(P: TPoint3D; radAng1, radAng2: real; var x, y:real);
+begin
+    //x:=  P.X* cos(A) − P.Y*Cos(B)
+    //y:=  P.Z + P.X*Sin(A) + P.Y*Sin(B)
+    X:= P.X*Cos(radAng1) - P.Y*Cos(radAng2);
+    Y:= P.Z + P.X*Sin(radAng1) + P.Y*Sin(radAng2);
+end;
+
+procedure TFPNoGUIGraphicsBridge.AddLine3D(line3D: TLine3D);
+var
+   count: integer;
+begin
+  count:= Length(Lines3DDynArray);
+  Setlength(Lines3DDynArray, count+1);
+  Lines3DDynArray[count]:=  line3D;
+end;
+
+procedure TFPNoGUIGraphicsBridge.AddLine3D(x1, y1, z1: real; x2, y2, z2: real);
+var
+   count: integer;
+begin
+  count:= Length(Lines3DDynArray);
+  Setlength(Lines3DDynArray, count+1);
+  Lines3DDynArray[count]:=  ToLine3D(x1, y1, z1, x2, y2, z2);
+end;
+
+procedure TFPNoGUIGraphicsBridge.ChangeLine3D(index: integer; x1, y1, z1: real; x2, y2, z2: real);
+var
+  count: integer;
+begin
+  count:= Length(Lines3DDynArray);
+  if index >= count then Exit;
+  Lines3DDynArray[index]:=  ToLine3D(x1, y1, z1, x2, y2, z2);
+end;
+
+procedure TFPNoGUIGraphicsBridge.ChangeLine3D(var lines3D: Array of TLine3D; index: integer; x1, y1, z1: real; x2, y2, z2: real);
+var
+  count: integer;
+begin
+  count:= Length(lines3D);
+  if index >= count then Exit;
+  lines3D[index]:=  ToLine3D(x1, y1, z1, x2, y2, z2);
+end;
+
+procedure TFPNoGUIGraphicsBridge.Draw3D(lines3D: Array of TLine3D);
+var
+  x1,y1,x2,y2 : real;
+  radAng1, radAng2: real;
+  i, count: integer;
+begin
+  count:= Length(lines3D);
+  radAng1:= 30/180*PI;
+  radAng2:= 60/180*PI;
+  for i:= 0 to count-1 do
+  begin
+    Self.Projection3Dxy(lines3D[i].P1, radAng1, radAng2, x1, y1);
+    Self.Projection3Dxy(lines3D[i].P2, radAng1, radAng2, x2, y2);
+    Self.DrawLine(x1, y1, x2, y2);
+  end;
+end;
+
+
+procedure TFPNoGUIGraphicsBridge.Draw3D();
+var
+  x1,y1,x2,y2 : real;
+  radAng1, radAng2: real;
+  i, count: integer;
+begin
+  count:= Length(Lines3DDynArray);
+  radAng1:= 30/180*PI;
+  radAng2:= 60/180*PI;
+  for i:= 0 to count-1 do
+  begin
+    Self.Projection3Dxy(Lines3DDynArray[i].P1, radAng1, radAng2, x1, y1);
+    Self.Projection3Dxy(Lines3DDynArray[i].P2, radAng1, radAng2, x2, y2);
+    Self.DrawLine(x1,y1,x2,y2);
+  end;
+end;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dz(P: TPoint3D; Rad: Real; var x, y: real);
+Begin
+  x:= P.X*Cos(Rad)-P.Y*Sin(Rad);
+  y:= P.X*Sin(Rad)+P.Y*Cos(Rad);
+End;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dy(P: TPoint3D; Rad: Real; var x, z: real);
+begin
+  x:= P.X*Cos(Rad)-P.Z*Sin(Rad);
+  z:= P.X*Sin(Rad)+P.Z*Cos(Rad);
+End;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dy(var lines3D: array of TLine3D; Deg: Real);
+var
+   Rad, X, Z: real;
+   i, count: integer;
+begin
+   Rad:= Deg/180*Pi;
+   count:= Length(lines3D);
+   for i:= 0 to count-1 do
+   begin
+      Rotate3Dy(lines3D[i].P1, Rad, X, Z);
+      lines3D[i].P1.X:= X;
+      lines3D[i].P1.Z:= Z;
+      Rotate3Dy(lines3D[i].P2, Rad, X, Z);
+      lines3D[i].P2.X:= X;
+      lines3D[i].P2.Z:= Z;
+   end;
+End;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dz(var lines3D: array of TLine3D; Deg: Real);
+var
+   Rad, X, Y: real;
+   i, count: integer;
+begin
+   Rad:= Deg/180*Pi;
+   count:= Length(lines3D);
+   for i:= 0 to count-1 do
+   begin
+      Rotate3Dz(lines3D[i].P1, Rad, X, Y);
+      lines3D[i].P1.X:= X;
+      lines3D[i].P1.Y:= Y;
+      Rotate3Dz(lines3D[i].P2, Rad, X, Y);
+      lines3D[i].P2.X:= X;
+      lines3D[i].P2.Y:= Y;
+   end;
+End;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dy(Deg: Real);
+var
+   Rad, X, Z: real;
+   i, count: integer;
+begin
+   Rad:= Deg/180*Pi;
+   count:= Length(Lines3DDynArray);
+   for i:= 0 to count-1 do
+   begin
+      Rotate3Dy(Lines3DDynArray[i].P1, Rad, X, Z);
+      Lines3DDynArray[i].P1.X:= X;
+      Lines3DDynArray[i].P1.Z:= Z;
+      Rotate3Dy(Lines3DDynArray[i].P2, Rad, X, Z);
+      Lines3DDynArray[i].P2.X:= X;
+      Lines3DDynArray[i].P2.Z:= Z;
+   end;
+End;
+
+Procedure TFPNoGUIGraphicsBridge.Rotate3Dz(Deg: Real);
+var
+   Rad, X, Y: real;
+   i, count: integer;
+begin
+   Rad:= Deg/180*Pi;
+   count:= Length(Lines3DDynArray);
+   for i:= 0 to count-1 do
+   begin
+      Rotate3Dz(Lines3DDynArray[i].P1, Rad, X, Y);
+      Lines3DDynArray[i].P1.X:= X;
+      Lines3DDynArray[i].P1.Y:= Y;
+      Rotate3Dz(Lines3DDynArray[i].P2, Rad, X, Y);
+      Lines3DDynArray[i].P2.X:= X;
+      Lines3DDynArray[i].P2.Y:= Y;
+   end;
+End;
+
 procedure TFPNoGUIGraphicsBridge.PaintGrid(VP: TViewPort; clearscr: boolean);
 var
    dk, dn, dn1: real;
@@ -5018,7 +5239,6 @@ end;
 constructor TFPNoGUIGraphicsBridge.Create(AOwner: TComponent);
 begin
    inherited Create(AOwner);
-
    EntityList:= TList.Create;
    FunctionList:= TList.Create;
    FEntityData:= TEntityData.Create;

@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CONFIG>
-  <Compiler Value="C:\laz4android\fpc\3.1.1\bin\i386-win32\fpc.exe" Date="1195510323"/>
-  <Params Value=" -Tandroid -Parm -MDelphi -Scghim -CX -Os3 -Xs -XX -l -vewnhibq -FlC:\adt32\ndk10e\platforms\android-15\arch-arm\usr\lib -FlC:\adt32\ndk10e\toolchains\arm-linux-androideabi-4.9\prebuilt\windows\lib\gcc\arm-linux-androideabi\4.9 -FuC:\laz4android\components\NoGuiGraphicsBridge\lib\arm-android -FuC:\laz4android\components\androidmodulewizard\lib\arm-android -FuC:\laz4android\lcl\units\arm-android -FuC:\laz4android\components\lazutils\lib\arm-android -FuC:\laz4android\packager\units\arm-android -FuC:\adt32\eclipse\workspace\AppTFPNoGUIGraphicsBridgeDemo1\jni\ -FUC:\adt32\eclipse\workspace\AppTFPNoGUIGraphicsBridgeDemo1\obj\controls\ -FEC:\adt32\eclipse\workspace\AppTFPNoGUIGraphicsBridgeDemo1\libs\armeabi\ -olibcontrols.so -Xd -CfSoft -CpARMV6 -XParm-linux-androideabi- -FDC:\adt32\ndk10e\toolchains\arm-linux-androideabi-4.9\prebuilt\windows\bin controls.lpr"/>
-</CONFIG>

@@ -7,8 +7,8 @@ unit tfpnoguigraphicsbridge_pack;
 interface
 
 uses
-  FPNoGUIGraphicsBridge, regnoguigraphicsbridge, GridData, ViewPort, 
-  FPColorBridge, LazarusPackageIntf;
+  regnoguigraphicsbridge, FPColorBridge, GeometryUtilsBridge, 
+  FPNoGUIGraphicsBridge, GridData, ViewPort, LazarusPackageIntf;
 
 implementation
 

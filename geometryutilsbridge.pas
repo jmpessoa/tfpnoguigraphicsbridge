@@ -11,6 +11,7 @@ const
   PI =	3.1415926535;
 
 type
+
   TRealPoint = record
      x, y: real;
   end;
